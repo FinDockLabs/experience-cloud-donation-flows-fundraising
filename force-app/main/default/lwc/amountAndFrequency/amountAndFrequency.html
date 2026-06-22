@@ -1,0 +1,106 @@
+<template>
+    <div class="amount-frequency-container">
+
+        <!-- Frequency Toggle -->
+        <template lwc:if={showFrequencyToggle}>
+            <fieldset class="frequency-toggle">
+                <legend class="slds-assistive-text">{labels.ec_label_donation_frequency}</legend>
+
+                <input
+                    type="radio"
+                    id={frequencyOnceId}
+                    name={frequencyGroupName}
+                    value={freq1Value}
+                    class="visually-hidden-input"
+                    checked={isFreq1Selected}
+                    onchange={handleFrequencyChange}
+                />
+                <label for={frequencyOnceId} class="toggle-option">{labels.ec_label_give_once}</label>
+
+                <input
+                    type="radio"
+                    id={frequencyMonthlyId}
+                    name={frequencyGroupName}
+                    value={freq2Value}
+                    class="visually-hidden-input"
+                    checked={isFreq2Selected}
+                    onchange={handleFrequencyChange}
+                />
+                <label for={frequencyMonthlyId} class="toggle-option toggle-option-secondary">
+                    <lightning-icon
+                        icon-name="utility:heart"
+                        size="x-small"
+                        class="monthly-icon"
+                        aria-hidden="true"
+                    ></lightning-icon>
+                    {labels.ec_label_monthly}
+                </label>
+            </fieldset>
+        </template>
+
+        <!-- Preset Amount Buttons -->
+        <template lwc:if={showPresets}>
+            <fieldset class="amount-grid">
+                <legend class="slds-assistive-text">{labels.ec_label_preset_amount_group}</legend>
+                <template for:each={presetAmountOptions} for:item="option">
+                    <span key={option.value} class="amount-cell">
+                        <input
+                            type="radio"
+                            id={option.inputId}
+                            name={presetName}
+                            value={option.value}
+                            class="visually-hidden-input"
+                            checked={option.isSelected}
+                            onchange={handlePresetAmountSelect}
+                        />
+                        <label for={option.inputId} class="amount-option">{option.label}</label>
+                    </span>
+                </template>
+            </fieldset>
+
+        </template>
+
+        <!-- Custom Amount Input Row -->
+        <div class="custom-amount-field">
+            <label for={customAmountId} class="slds-assistive-text">{labels.ec_label_other_amount}</label>
+            <div class="custom-amount-row">
+
+                <template lwc:if={isCurrencyPrefix}>
+                    <span class="currency-adornment currency-adornment-prefix" aria-hidden="true">
+                        {currencySymbol}
+                    </span>
+                </template>
+
+                <input
+                    type="number"
+                    id={customAmountId}
+                    class="custom-amount-input-native"
+                    placeholder={labels.ec_label_other_amount}
+                    value={_customAmount}
+                    min={customAmountMin}
+                    max={customAmountMax}
+                    step="any"
+                    aria-describedby={customAmountErrorId}
+                    aria-invalid={hasValidationError}
+                    oninput={handleCustomAmountInput}
+                />
+
+                <template lwc:if={isCurrencySuffix}>
+                    <span class="currency-adornment currency-adornment-suffix" aria-hidden="true">
+                        {currencySymbol}
+                    </span>
+                </template>
+
+                <span class="currency-code-static" aria-hidden="true">{defaultCurrency}</span>
+
+            </div>
+
+            <template lwc:if={hasValidationError}>
+                <p id={customAmountErrorId} role="alert" class="amount-error">
+                    {validationError}
+                </p>
+            </template>
+        </div>
+
+    </div>
+</template>
