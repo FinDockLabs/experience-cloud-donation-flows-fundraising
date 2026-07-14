@@ -120,12 +120,6 @@
         <scale>2</scale>
     </formulas>
     <formulas>
-        <description>False by default. If your form supports payers from overseas change this formula to determine overseas or not based on the payers address information.</description>
-        <name>GiftAidOverseas</name>
-        <dataType>Boolean</dataType>
-        <expression>false</expression>
-    </formulas>
-    <formulas>
         <name>GiftTributeNotificationChannel</name>
         <dataType>String</dataType>
         <expression>IF({!GiftTributeNotify}, &apos;email&apos;, null)</expression>
@@ -711,132 +705,6 @@
             </styleProperties>
         </fields>
         <fields>
-            <name>GiftAid</name>
-            <dataType>Boolean</dataType>
-            <fieldText>Yes, I want to Gift Aid any donations now, in the future and in the past four years</fieldText>
-            <fieldType>InputField</fieldType>
-            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-            <isRequired>true</isRequired>
-            <styleProperties>
-                <verticalAlignment>
-                    <stringValue>top</stringValue>
-                </verticalAlignment>
-                <width>
-                    <stringValue>12</stringValue>
-                </width>
-            </styleProperties>
-        </fields>
-        <fields>
-            <name>GiftAidFirstName</name>
-            <dataType>String</dataType>
-            <defaultValue>
-                <elementReference>First_Name_Input</elementReference>
-            </defaultValue>
-            <fieldText>First Name</fieldText>
-            <fieldType>InputField</fieldType>
-            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-            <isRequired>false</isRequired>
-            <styleProperties>
-                <verticalAlignment>
-                    <stringValue>top</stringValue>
-                </verticalAlignment>
-                <width>
-                    <stringValue>12</stringValue>
-                </width>
-            </styleProperties>
-            <visibilityRule>
-                <conditionLogic>and</conditionLogic>
-                <conditions>
-                    <leftValueReference>GiftAid</leftValueReference>
-                    <operator>EqualTo</operator>
-                    <rightValue>
-                        <booleanValue>true</booleanValue>
-                    </rightValue>
-                </conditions>
-            </visibilityRule>
-        </fields>
-        <fields>
-            <name>GiftAidLastName</name>
-            <dataType>String</dataType>
-            <defaultValue>
-                <elementReference>Last_Name_Input</elementReference>
-            </defaultValue>
-            <fieldText>Last Name</fieldText>
-            <fieldType>InputField</fieldType>
-            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-            <isRequired>false</isRequired>
-            <styleProperties>
-                <verticalAlignment>
-                    <stringValue>top</stringValue>
-                </verticalAlignment>
-                <width>
-                    <stringValue>12</stringValue>
-                </width>
-            </styleProperties>
-            <visibilityRule>
-                <conditionLogic>and</conditionLogic>
-                <conditions>
-                    <leftValueReference>GiftAid</leftValueReference>
-                    <operator>EqualTo</operator>
-                    <rightValue>
-                        <booleanValue>true</booleanValue>
-                    </rightValue>
-                </conditions>
-            </visibilityRule>
-        </fields>
-        <fields>
-            <name>GiftAidPostalCode</name>
-            <dataType>String</dataType>
-            <fieldText>Postal Code</fieldText>
-            <fieldType>InputField</fieldType>
-            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-            <isRequired>false</isRequired>
-            <styleProperties>
-                <verticalAlignment>
-                    <stringValue>top</stringValue>
-                </verticalAlignment>
-                <width>
-                    <stringValue>12</stringValue>
-                </width>
-            </styleProperties>
-            <visibilityRule>
-                <conditionLogic>and</conditionLogic>
-                <conditions>
-                    <leftValueReference>GiftAid</leftValueReference>
-                    <operator>EqualTo</operator>
-                    <rightValue>
-                        <booleanValue>true</booleanValue>
-                    </rightValue>
-                </conditions>
-            </visibilityRule>
-        </fields>
-        <fields>
-            <name>GiftAidHouseNameOrNumber</name>
-            <dataType>String</dataType>
-            <fieldText>House name or number</fieldText>
-            <fieldType>InputField</fieldType>
-            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-            <isRequired>false</isRequired>
-            <styleProperties>
-                <verticalAlignment>
-                    <stringValue>top</stringValue>
-                </verticalAlignment>
-                <width>
-                    <stringValue>12</stringValue>
-                </width>
-            </styleProperties>
-            <visibilityRule>
-                <conditionLogic>and</conditionLogic>
-                <conditions>
-                    <leftValueReference>GiftAid</leftValueReference>
-                    <operator>EqualTo</operator>
-                    <rightValue>
-                        <booleanValue>true</booleanValue>
-                    </rightValue>
-                </conditions>
-            </visibilityRule>
-        </fields>
-        <fields>
             <name>Pay_Button</name>
             <dataTypeMappings>
                 <typeName>recurringType</typeName>
@@ -847,7 +715,7 @@
             <inputParameters>
                 <name>pixConfig</name>
                 <value>
-                    <stringValue>{&quot;payer&quot;:{&quot;contactObject&quot;:{&quot;name&quot;:&quot;payerContactVarName&quot;,&quot;value&quot;:&quot;{!Contact_Record}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;}},&quot;paymentMethod&quot;:{&quot;name&quot;:&quot;paymentMethodObjectVar&quot;,&quot;value&quot;:&quot;{!Payment_Method_Selector.context}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;oneTime&quot;:{&quot;valueDataType&quot;:&quot;Object&quot;,&quot;value&quot;:{&quot;amount&quot;:{&quot;name&quot;:&quot;oneTimeAmount&quot;,&quot;value&quot;:&quot;{!FinalAmountOneTime}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;currencyIsoCode&quot;:{&quot;name&quot;:&quot;oneTimeCurrencyVar&quot;,&quot;value&quot;:&quot;EUR&quot;,&quot;valueDataType&quot;:&quot;String&quot;}}},&quot;recurring&quot;:{&quot;valueDataType&quot;:&quot;Object&quot;,&quot;value&quot;:{&quot;recurringSObject&quot;:{&quot;name&quot;:&quot;recurringObjectVar&quot;,&quot;value&quot;:&quot;Recurring_Record&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;amount&quot;:{&quot;name&quot;:&quot;recurringAmount&quot;,&quot;value&quot;:&quot;{!FinalAmountRecurring}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;currencyIsoCode&quot;:{&quot;name&quot;:&quot;recurringCurrencyVar&quot;,&quot;value&quot;:&quot;EUR&quot;,&quot;valueDataType&quot;:&quot;String&quot;},&quot;frequency&quot;:{&quot;name&quot;:&quot;recurringFrequencyVar&quot;,&quot;value&quot;:&quot;{!amountAndFrequency.frequency}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;}}},&quot;packageActions&quot;:{&quot;giftAidCreate&quot;:{&quot;dateMade&quot;:{&quot;name&quot;:&quot;dateMade&quot;,&quot;value&quot;:&quot;{!$Flow.CurrentDate}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;startDate&quot;:{&quot;name&quot;:&quot;startDate&quot;,&quot;value&quot;:&quot;{!$Flow.CurrentDate}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;endDate&quot;:{&quot;name&quot;:&quot;endDate&quot;,&quot;value&quot;:&quot;&quot;,&quot;dataType&quot;:null},&quot;confirmationDate&quot;:{&quot;name&quot;:&quot;confirmationDate&quot;,&quot;value&quot;:&quot;{!$Flow.CurrentDate}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;firstName&quot;:{&quot;name&quot;:&quot;firstName&quot;,&quot;value&quot;:&quot;{!GiftAidFirstName}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;lastName&quot;:{&quot;name&quot;:&quot;lastName&quot;,&quot;value&quot;:&quot;{!GiftAidLastName}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;houseNameOrNumber&quot;:{&quot;name&quot;:&quot;houseNameOrNumber&quot;,&quot;value&quot;:&quot;{!GiftAidHouseNameOrNumber}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;postalCode&quot;:{&quot;name&quot;:&quot;postalCode&quot;,&quot;value&quot;:&quot;{!GiftAidPostalCode}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;acquisitionMethod&quot;:{&quot;name&quot;:&quot;acquisitionMethod&quot;,&quot;value&quot;:&quot;digital&quot;,&quot;dataType&quot;:&quot;String&quot;},&quot;overseas&quot;:{&quot;name&quot;:&quot;overseas&quot;,&quot;value&quot;:&quot;{!GiftAidOverseas}&quot;,&quot;dataType&quot;:&quot;reference&quot;}},&quot;giftTribute&quot;:{&quot;type&quot;:{&quot;name&quot;:&quot;type&quot;,&quot;value&quot;:&quot;{!TributeType}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;honoreeName&quot;:{&quot;name&quot;:&quot;honoreeName&quot;,&quot;value&quot;:&quot;{!HonoreeName}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;honoreeInformation&quot;:{&quot;name&quot;:&quot;honoreeInformation&quot;,&quot;value&quot;:&quot;&quot;,&quot;dataType&quot;:null},&quot;notificationChannel&quot;:{&quot;name&quot;:&quot;notificationChannel&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationChannel}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;notificationContactName&quot;:{&quot;name&quot;:&quot;notificationContactName&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationName}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;notificationEmail&quot;:{&quot;name&quot;:&quot;notificationEmail&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationEmail.value}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;notificationInfo&quot;:{&quot;name&quot;:&quot;notificationInfo&quot;,&quot;value&quot;:&quot;&quot;,&quot;dataType&quot;:null},&quot;notificationMessage&quot;:{&quot;name&quot;:&quot;notificationMessage&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationMessage}&quot;,&quot;dataType&quot;:&quot;reference&quot;}}},&quot;successUrl&quot;:{&quot;name&quot;:&quot;successUrl&quot;,&quot;value&quot;:&quot;https://www.example.com/success&quot;,&quot;valueDataType&quot;:&quot;String&quot;},&quot;failureUrl&quot;:{&quot;name&quot;:&quot;failureUrl&quot;,&quot;value&quot;:&quot;https://www.example.com/failure&quot;,&quot;valueDataType&quot;:&quot;String&quot;}}</stringValue>
+                    <stringValue>{&quot;payer&quot;:{&quot;contactObject&quot;:{&quot;name&quot;:&quot;payerContactVarName&quot;,&quot;value&quot;:&quot;{!Contact_Record}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;}},&quot;paymentMethod&quot;:{&quot;name&quot;:&quot;paymentMethodObjectVar&quot;,&quot;value&quot;:&quot;{!Payment_Method_Selector.context}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;oneTime&quot;:{&quot;valueDataType&quot;:&quot;Object&quot;,&quot;value&quot;:{&quot;amount&quot;:{&quot;name&quot;:&quot;oneTimeAmount&quot;,&quot;value&quot;:&quot;{!FinalAmountOneTime}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;currencyIsoCode&quot;:{&quot;name&quot;:&quot;oneTimeCurrencyVar&quot;,&quot;value&quot;:&quot;EUR&quot;,&quot;valueDataType&quot;:&quot;String&quot;}}},&quot;recurring&quot;:{&quot;valueDataType&quot;:&quot;Object&quot;,&quot;value&quot;:{&quot;recurringSObject&quot;:{&quot;name&quot;:&quot;recurringObjectVar&quot;,&quot;value&quot;:&quot;Recurring_Record&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;amount&quot;:{&quot;name&quot;:&quot;recurringAmount&quot;,&quot;value&quot;:&quot;{!FinalAmountRecurring}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;},&quot;currencyIsoCode&quot;:{&quot;name&quot;:&quot;recurringCurrencyVar&quot;,&quot;value&quot;:&quot;EUR&quot;,&quot;valueDataType&quot;:&quot;String&quot;},&quot;frequency&quot;:{&quot;name&quot;:&quot;recurringFrequencyVar&quot;,&quot;value&quot;:&quot;{!amountAndFrequency.frequency}&quot;,&quot;valueDataType&quot;:&quot;reference&quot;}}},&quot;packageActions&quot;:{&quot;giftTribute&quot;:{&quot;type&quot;:{&quot;name&quot;:&quot;type&quot;,&quot;value&quot;:&quot;{!TributeType}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;honoreeName&quot;:{&quot;name&quot;:&quot;honoreeName&quot;,&quot;value&quot;:&quot;{!HonoreeName}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;honoreeInformation&quot;:{&quot;name&quot;:&quot;honoreeInformation&quot;,&quot;value&quot;:&quot;&quot;,&quot;dataType&quot;:null},&quot;notificationChannel&quot;:{&quot;name&quot;:&quot;notificationChannel&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationChannel}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;notificationContactName&quot;:{&quot;name&quot;:&quot;notificationContactName&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationName}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;notificationEmail&quot;:{&quot;name&quot;:&quot;notificationEmail&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationEmail.value}&quot;,&quot;dataType&quot;:&quot;reference&quot;},&quot;notificationInfo&quot;:{&quot;name&quot;:&quot;notificationInfo&quot;,&quot;value&quot;:&quot;&quot;,&quot;dataType&quot;:null},&quot;notificationMessage&quot;:{&quot;name&quot;:&quot;notificationMessage&quot;,&quot;value&quot;:&quot;{!GiftTributeNotificationMessage}&quot;,&quot;dataType&quot;:&quot;reference&quot;}}},&quot;successUrl&quot;:{&quot;name&quot;:&quot;successUrl&quot;,&quot;value&quot;:&quot;https://www.example.com/success&quot;,&quot;valueDataType&quot;:&quot;String&quot;},&quot;failureUrl&quot;:{&quot;name&quot;:&quot;failureUrl&quot;,&quot;value&quot;:&quot;https://www.example.com/failure&quot;,&quot;valueDataType&quot;:&quot;String&quot;}}</stringValue>
                 </value>
             </inputParameters>
             <inputParameters>
@@ -944,60 +812,6 @@
                 <name>giftTributeNotificationMessage</name>
                 <value>
                     <elementReference>GiftTributeNotificationMessage</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidDateMade</name>
-                <value>
-                    <elementReference>$Flow.CurrentDate</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidStartDate</name>
-                <value>
-                    <elementReference>$Flow.CurrentDate</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidConfirmationDate</name>
-                <value>
-                    <elementReference>$Flow.CurrentDate</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidFirstName</name>
-                <value>
-                    <elementReference>GiftAidFirstName</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidLastName</name>
-                <value>
-                    <elementReference>GiftAidLastName</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidHouseNameOrNumber</name>
-                <value>
-                    <elementReference>GiftAidHouseNameOrNumber</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidPostalCode</name>
-                <value>
-                    <elementReference>GiftAidPostalCode</elementReference>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidAcquisitionMethod</name>
-                <value>
-                    <stringValue>digital</stringValue>
-                </value>
-            </inputParameters>
-            <inputParameters>
-                <name>giftAidOverseas</name>
-                <value>
-                    <elementReference>GiftAidOverseas</elementReference>
                 </value>
             </inputParameters>
             <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
