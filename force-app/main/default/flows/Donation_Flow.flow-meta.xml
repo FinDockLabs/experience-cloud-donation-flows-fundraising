@@ -1081,7 +1081,7 @@
             <targetReference>Enable_Gift_Tributes</targetReference>
         </connector>
     </start>
-    <status>Draft</status>
+    <status>Active</status>
     <variables>
         <name>Contact_Record</name>
         <dataType>SObject</dataType>
