@@ -109,14 +109,14 @@
         <description>The final amount taking into account the cover fees checkbox</description>
         <name>FinalAmountOneTime</name>
         <dataType>Number</dataType>
-        <expression>IF({!CoverFees}, {!amountAndFrequency.amountOneTime} + 0.50, {!amountAndFrequency.amountOneTime})</expression>
+        <expression>IF({!CoverFees}, VALUE({!amountAndFrequency.amountOneTime}) + 0.50, VALUE({!amountAndFrequency.amountOneTime}))</expression>
         <scale>2</scale>
     </formulas>
     <formulas>
         <description>The final amount taking into account the cover fees checkbox</description>
         <name>FinalAmountRecurring</name>
         <dataType>Number</dataType>
-        <expression>IF({!CoverFees}, {!amountAndFrequency.amountRecurring} + 0.50, {!amountAndFrequency.amountRecurring})</expression>
+        <expression>IF({!CoverFees}, VALUE({!amountAndFrequency.amountRecurring}) + 0.50, VALUE({!amountAndFrequency.amountRecurring}))</expression>
         <scale>2</scale>
     </formulas>
     <formulas>
@@ -402,7 +402,7 @@
             <inputParameters>
                 <name>label</name>
                 <value>
-                    <stringValue>Dedicate your gift to a special person</stringValue>
+                    <stringValue>Dedicate your gift</stringValue>
                 </value>
             </inputParameters>
             <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
