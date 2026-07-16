@@ -5,9 +5,9 @@ const MAX_STAGE = 3;
 
 export default class ExperienceProgressStages extends LightningElement {
     labels = labels;
-    @api stage1Label = 'Amount';
-    @api stage2Label = 'Information';
-    @api stage3Label = 'Payment';
+    @api stage1Label = labels.ec_stage_label_amount;
+    @api stage2Label = labels.ec_stage_label_information;
+    @api stage3Label = labels.ec_stage_label_payment;
     @api currentStage = 1;
     // Track the live screen reader announcement string literal
     announcementText = '';

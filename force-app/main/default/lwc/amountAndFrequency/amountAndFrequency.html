@@ -63,7 +63,7 @@
         <!-- Custom Amount Input Row -->
         <div class="custom-amount-field">
             <label for={customAmountId} class="slds-assistive-text">{labels.ec_label_other_amount}</label>
-            <div class="custom-amount-row">
+            <div class={customAmountRowClass}>
 
                 <template lwc:if={isCurrencyPrefix}>
                     <span class="currency-adornment currency-adornment-prefix" aria-hidden="true">
@@ -72,17 +72,18 @@
                 </template>
 
                 <input
-                    type="number"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="transaction-amount"
                     id={customAmountId}
                     class="custom-amount-input-native"
                     placeholder={labels.ec_label_other_amount}
                     value={_customAmount}
-                    min={customAmountMin}
-                    max={customAmountMax}
-                    step="any"
                     aria-describedby={customAmountErrorId}
                     aria-invalid={hasValidationError}
                     oninput={handleCustomAmountInput}
+                    onfocus={handleCustomAmountFocus}
+                    onblur={handleCustomAmountBlur}
                 />
 
                 <template lwc:if={isCurrencySuffix}>
@@ -90,8 +91,6 @@
                         {currencySymbol}
                     </span>
                 </template>
-
-                <span class="currency-code-static" aria-hidden="true">{defaultCurrency}</span>
 
             </div>
 

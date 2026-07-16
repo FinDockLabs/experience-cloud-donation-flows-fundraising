@@ -37,9 +37,20 @@ export default class AmountAndFrequency extends LightningElement {
         return this._defaultCurrency;
     }
     set defaultCurrency(value) {
-        const next = value || '';
+        const next = (value || '').toUpperCase();
         if (this._defaultCurrency === next) return;
         this._defaultCurrency = next;
+        // Clear custom amount if it has more decimal places than the new currency allows.
+        // Rounding or truncating silently would change the payment amount without user awareness,
+        // which is unacceptable for a payment form — the user must re-enter the amount explicitly.
+        if (this._customAmount !== '') {
+            const dotIdx = this._customAmount.indexOf('.');
+            const decimals = this._currencyDecimals;
+            if (dotIdx !== -1 && this._customAmount.length - dotIdx - 1 > decimals) {
+                this._customAmount = '';
+                this._dispatchChange();
+            }
+        }
         this.dispatchEvent(new FlowAttributeChangeEvent('selectedCurrency', next));
     }
 
@@ -62,13 +73,15 @@ export default class AmountAndFrequency extends LightningElement {
     @api
     get amountOneTime() {
         if (this._frequency !== 'oneTime') return null;
-        return this._amount;
+        const amt = this._amount;
+        return amt !== null ? String(amt) : null;
     }
 
     @api
     get amountRecurring() {
         if (this._frequency !== 'recurring') return null;
-        return this._amount;
+        const amt = this._amount;
+        return amt !== null ? String(amt) : null;
     }
 
     @api
@@ -162,6 +175,17 @@ export default class AmountAndFrequency extends LightningElement {
         return n > 0 ? n : null;
     }
 
+    get _currencyDecimals() {
+        try {
+            return new Intl.NumberFormat(this._locale, {
+                style: 'currency',
+                currency: this.defaultCurrency
+            }).resolvedOptions().maximumFractionDigits;
+        } catch {
+            return 2;
+        }
+    }
+
     get validationError() {
         return this._validationError;
     }
@@ -170,12 +194,50 @@ export default class AmountAndFrequency extends LightningElement {
         return !!this._validationError;
     }
 
+    get customAmountRowClass() {
+        return this._validationError
+            ? 'custom-amount-row custom-amount-row--error'
+            : 'custom-amount-row';
+    }
+
+    @api validate() {
+        // If no cached error but a custom amount exists, re-compute — this handles the case
+        // where the component re-mounted (clearing _validationError) while _customAmount was
+        // restored from sessionStorage.
+        if (!this._validationError && this._customAmount !== '') {
+            this._validateAmount(Number(this._customAmount));
+        }
+
+        if (this._validationError) {
+            return {
+                isValid: false,
+                /*
+                 * Use a zero-width space (\u200B) to block Salesforce Flow navigation.
+                 * Returning the actual error string causes the Flow runtime to render a static,
+                 * duplicate error message outside our component that fails to clear when the
+                 * user empties the input. The zero-width space satisfies the Flow engine's
+                 * requirement for an errorMessage while letting our custom, reactive inline
+                 * error handle the UI cleanly.
+                 */
+                errorMessage: '\u200B'
+            };
+        }
+
+        return { isValid: true };
+    }
+
     connectedCallback() {
         if (this.defaultFrequency) {
             this._frequency = this.defaultFrequency;
         }
         this._restoreState();
         this._applyQueryParams();
+
+        // If a state was restored from sessionStorage, immediately evaluate
+        // validation to prevent layout shifts or flashing of error styles.
+        if (this._customAmount !== '') {
+            this._validateAmount(Number(this._customAmount));
+        }
     }
 
     disconnectedCallback() {
@@ -196,11 +258,39 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     handleCustomAmountInput(event) {
-        const val            = event.target.value;
+        let val = event.target.value;
+        val = val.replace(',', '.');
+        val = val.replace(/[^0-9.]/g, '');
+        const firstDot = val.indexOf('.');
+        if (firstDot !== -1) {
+            val = val.substring(0, firstDot + 1) + val.substring(firstDot + 1).replace(/\./g, '');
+        }
+        const decimals = this._currencyDecimals;
+        const dotIdx = val.indexOf('.');
+        if (decimals === 0 && dotIdx !== -1) {
+            val = val.substring(0, dotIdx);
+        } else if (decimals > 0 && dotIdx !== -1 && val.length - dotIdx - 1 > decimals) {
+            val = val.substring(0, dotIdx + decimals + 1);
+        }
+        event.target.value = val;
         this._customAmount   = val;
         this._selectedPreset = val !== '' ? null : this._selectedPreset;
         this._validateAmount(Number(val));
         this._dispatchChange();
+    }
+
+    handleCustomAmountFocus(event) {
+        event.target.value = this._customAmount;
+    }
+
+    handleCustomAmountBlur(event) {
+        if (this._customAmount === '') return;
+        const num = Number(this._customAmount);
+        if (isNaN(num)) return;
+        event.target.value = new Intl.NumberFormat(this._locale, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: this._currencyDecimals
+        }).format(num);
     }
 
     _parseAmounts(raw) {
@@ -237,8 +327,7 @@ export default class AmountAndFrequency extends LightningElement {
                 style: 'currency',
                 currency: currencyCode,
                 currencyDisplay: 'narrowSymbol',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                minimumFractionDigits: 0
             }).format(amount);
         } catch {
             return `${currencyCode} ${amount}`;

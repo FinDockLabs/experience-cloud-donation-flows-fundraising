@@ -9,6 +9,30 @@
         <shortDescription>Aria live region announcement text on step change</shortDescription>
         <value>Step {0} of 3</value>
     </labels>
+    <labels>
+        <fullName>ec_stage_label_amount</fullName>
+        <categories>Experience Cloud</categories>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Default label for the amount step in the progress indicator</shortDescription>
+        <value>Amount</value>
+    </labels>
+    <labels>
+        <fullName>ec_stage_label_information</fullName>
+        <categories>Experience Cloud</categories>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Default label for the information step in the progress indicator</shortDescription>
+        <value>Information</value>
+    </labels>
+    <labels>
+        <fullName>ec_stage_label_payment</fullName>
+        <categories>Experience Cloud</categories>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Default label for the payment step in the progress indicator</shortDescription>
+        <value>Payment</value>
+    </labels>
     <!-- Amount And Frequency -->
     <labels>
         <fullName>ec_label_donation_amount_heading</fullName>
