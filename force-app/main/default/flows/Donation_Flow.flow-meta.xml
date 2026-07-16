@@ -435,7 +435,7 @@
                 <fieldType>Region</fieldType>
                 <fields>
                     <name>TributesDisplayText</name>
-                    <fieldText>&lt;h2&gt;Tribute details&lt;/h2&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;</fieldText>
+                    <fieldText>&lt;h2&gt;Tribute details&lt;/h2&gt;</fieldText>
                     <fieldType>DisplayText</fieldType>
                     <styleProperties>
                         <verticalAlignment>
