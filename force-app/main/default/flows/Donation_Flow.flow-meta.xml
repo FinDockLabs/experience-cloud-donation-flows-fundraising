@@ -33,9 +33,9 @@
         </connector>
     </assignments>
     <assignments>
-        <description>Assign values to be set on the gift commitment schedule</description>
-        <name>Assign_custom_GCS_fields</name>
-        <label>Assign custom GCS fields</label>
+        <description>Assign values to be set on the gift commitment</description>
+        <name>Assign_custom_GC_fields</name>
+        <label>Assign custom GC fields</label>
         <locationX>0</locationX>
         <locationY>0</locationY>
         <assignmentItems>
@@ -62,7 +62,7 @@
             </value>
         </assignmentItems>
         <connector>
-            <targetReference>Assign_custom_GCS_fields</targetReference>
+            <targetReference>Assign_custom_GC_fields</targetReference>
         </connector>
     </assignments>
     <assignments>
@@ -294,7 +294,7 @@
         </fields>
         <fields>
             <name>personalDetailsDisplayText</name>
-            <fieldText>&lt;h2&gt;Enter your details&lt;/h2&gt;</fieldText>
+            <fieldText>&lt;p&gt;&lt;strong style=&quot;font-size: 16px;&quot;&gt;Enter your details&lt;/strong&gt;&lt;/p&gt;</fieldText>
             <fieldType>DisplayText</fieldType>
             <styleProperties>
                 <verticalAlignment>
@@ -397,17 +397,11 @@
         </fields>
         <fields>
             <name>GiftTributeToggle</name>
-            <extensionName>flowruntime:toggle</extensionName>
-            <fieldType>ComponentInstance</fieldType>
-            <inputParameters>
-                <name>label</name>
-                <value>
-                    <stringValue>Dedicate your gift to a special person</stringValue>
-                </value>
-            </inputParameters>
+            <dataType>Boolean</dataType>
+            <fieldText>Dedicate your gift to a special person</fieldText>
+            <fieldType>InputField</fieldType>
             <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
             <isRequired>true</isRequired>
-            <storeOutputAutomatically>true</storeOutputAutomatically>
             <styleProperties>
                 <verticalAlignment>
                     <stringValue>top</stringValue>
@@ -435,7 +429,7 @@
                 <fieldType>Region</fieldType>
                 <fields>
                     <name>TributesDisplayText</name>
-                    <fieldText>&lt;h2&gt;Tribute details&lt;/h2&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;</fieldText>
+                    <fieldText>&lt;p&gt;&lt;strong style=&quot;font-size: 16px;&quot;&gt;Tribute details&lt;/strong&gt;&lt;/p&gt;</fieldText>
                     <fieldType>DisplayText</fieldType>
                     <styleProperties>
                         <verticalAlignment>
@@ -454,7 +448,7 @@
                     <fieldText>Type of tribute</fieldText>
                     <fieldType>DropdownBox</fieldType>
                     <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-                    <isRequired>false</isRequired>
+                    <isRequired>true</isRequired>
                     <styleProperties>
                         <verticalAlignment>
                             <stringValue>top</stringValue>
@@ -470,7 +464,7 @@
                     <fieldText>Honoree Name</fieldText>
                     <fieldType>InputField</fieldType>
                     <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-                    <isRequired>false</isRequired>
+                    <isRequired>true</isRequired>
                     <styleProperties>
                         <verticalAlignment>
                             <stringValue>top</stringValue>
@@ -606,7 +600,7 @@
             <visibilityRule>
                 <conditionLogic>and</conditionLogic>
                 <conditions>
-                    <leftValueReference>GiftTributeToggle.value</leftValueReference>
+                    <leftValueReference>GiftTributeToggle</leftValueReference>
                     <operator>EqualTo</operator>
                     <rightValue>
                         <booleanValue>true</booleanValue>
@@ -691,10 +685,23 @@
         <fields>
             <name>CoverFees</name>
             <dataType>Boolean</dataType>
-            <fieldText>Cover fees for this donation</fieldText>
+            <fieldText>Cover fees for this donation (+0.50)</fieldText>
             <fieldType>InputField</fieldType>
             <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
             <isRequired>true</isRequired>
+            <styleProperties>
+                <verticalAlignment>
+                    <stringValue>top</stringValue>
+                </verticalAlignment>
+                <width>
+                    <stringValue>12</stringValue>
+                </width>
+            </styleProperties>
+        </fields>
+        <fields>
+            <name>CoverFeesDisplayText</name>
+            <fieldText>&lt;p&gt;&lt;em style=&quot;font-size: 12px;&quot;&gt;Add a small amount so 100% of your gift supports the mission.&lt;/em&gt;&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
             <styleProperties>
                 <verticalAlignment>
                     <stringValue>top</stringValue>
@@ -928,6 +935,6 @@
         <isCollection>false</isCollection>
         <isInput>false</isInput>
         <isOutput>false</isOutput>
-        <objectType>GiftCommitmentSchedule</objectType>
+        <objectType>GiftCommitment</objectType>
     </variables>
 </Flow>
