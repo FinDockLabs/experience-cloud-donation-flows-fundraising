@@ -715,7 +715,7 @@
             <name>Pay_Button</name>
             <dataTypeMappings>
                 <typeName>recurringType</typeName>
-                <typeValue>GiftCommitmentSchedule</typeValue>
+                <typeValue>GiftCommitment</typeValue>
             </dataTypeMappings>
             <extensionName>cpm:payButton</extensionName>
             <fieldType>ComponentInstance</fieldType>
