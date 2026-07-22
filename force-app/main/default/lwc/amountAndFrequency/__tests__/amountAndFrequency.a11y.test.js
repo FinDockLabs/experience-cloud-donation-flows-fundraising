@@ -83,7 +83,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
         await Promise.resolve();
 
         // Simulate typing an amount below the minimum to trigger the error.
-        const input = element.shadowRoot.querySelector('input[type="number"]');
+        const input = element.shadowRoot.querySelector('input.custom-amount-input-native');
         input.value = '1';
         input.dispatchEvent(new Event('input'));
         await Promise.resolve();

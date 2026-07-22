@@ -53,22 +53,11 @@ export default class AmountAndFrequencyConfig extends LightningElement {
     _showOneTime = true;
     _showMonthly = true;
     _defaultFrequency = 'oneTime';
-    _minAmount = 1;
+    _minAmount = 0;
     _maxAmount = 0;
-    _defaultCurrency = '';
-    _frequencyOpen = true;
-
-    get frequencyOpen() {
-        return this._frequencyOpen;
-    }
-
-    get frequencySectionClass() {
-        return this._frequencyOpen ? 'slds-section slds-is-open' : 'slds-section';
-    }
-
-    get frequencyChevronName() {
-        return this._frequencyOpen ? 'utility:chevrondown' : 'utility:chevronright';
-    }
+    _defaultCurrencyValue = '';
+    _defaultCurrencyValueType = 'String';
+    _currencyError = '';
 
     get showOneTime() {
         return this._showOneTime;
@@ -79,7 +68,7 @@ export default class AmountAndFrequencyConfig extends LightningElement {
     }
 
     get minAmount() {
-        return this._minAmount;
+        return this._minAmount === 0 ? '' : this._minAmount;
     }
 
     get maxAmount() {
@@ -123,20 +112,53 @@ export default class AmountAndFrequencyConfig extends LightningElement {
         return max > 0 && min > max ? 'Minimum cannot be greater than maximum.' : '';
     }
 
+    get defaultCurrencyValue() {
+        return this._defaultCurrencyValue;
+    }
+
+    get defaultCurrencyValueType() {
+        return this._defaultCurrencyValueType;
+    }
+
     get presetCurrencySymbol() {
-        if (!this._defaultCurrency || this._defaultCurrency.includes('{')) {
-            return '';
+        const val = this._defaultCurrencyValue;
+        if (val && /^[A-Z]{3}$/.test(val)) {
+            return this._getCurrencySymbol(val);
         }
-        return this._getCurrencySymbol(this._defaultCurrency);
+        return this._getCurrencySymbol(CURRENCY || '');
     }
 
 
+    get _currencyDecimals() {
+        const code = this._defaultCurrencyValue || CURRENCY || '';
+        try {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).resolvedOptions().maximumFractionDigits;
+        } catch {
+            return 2;
+        }
+    }
+
+    _sanitizeConfigAmountInput(event) {
+        let val = event.target.value;
+        val = val.replace(',', '.');
+        val = val.replace(/[^0-9.]/g, '');
+        const firstDot = val.indexOf('.');
+        if (firstDot !== -1) {
+            val = val.substring(0, firstDot + 1) + val.substring(firstDot + 1).replace(/\./g, '');
+        }
+        const decimals = this._currencyDecimals;
+        const dotIdx = val.indexOf('.');
+        if (decimals === 0 && dotIdx !== -1) {
+            val = val.substring(0, dotIdx);
+        } else if (decimals > 0 && dotIdx !== -1 && val.length - dotIdx - 1 > decimals) {
+            val = val.substring(0, dotIdx + decimals + 1);
+        }
+        event.target.value = val;
+        return val;
+    }
+
     _sanitizePresetAmount(event) {
-        const raw = event.target.value;
-        if (raw === '') return '';
-        const num = Number(raw);
-        if (num < 0) { event.target.value = ''; return ''; }
-        return num;
+        return this._sanitizeConfigAmountInput(event);
     }
 
     _hydrate() {
@@ -158,10 +180,16 @@ export default class AmountAndFrequencyConfig extends LightningElement {
         }
 
         this._defaultFrequency = get('defaultFrequency') ?? 'oneTime';
-        this._minAmount        = get('minAmount')        ?? 1;
+        this._minAmount        = get('minAmount')        ?? 0;
         this._maxAmount        = get('maxAmount')        ?? 0;
-        const rawCurrency = get('defaultCurrency') ?? '';
-        this._defaultCurrency = /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : (CURRENCY || '');
+        const currencyVar = vars.find(x => x.name === 'defaultCurrency');
+        if (currencyVar != null) {
+            this._defaultCurrencyValue = currencyVar.value ?? '';
+            this._defaultCurrencyValueType = currencyVar.valueDataType ?? 'String';
+        } else {
+            this._defaultCurrencyValue = CURRENCY || '';
+            this._defaultCurrencyValueType = 'String';
+        }
 
         this._presetsOneTime   = makePresets(get('presetAmountsOneTime'),   DEFAULT_AMOUNTS_ONE_TIME);
         this._presetsRecurring = makePresets(get('presetAmountsRecurring'), DEFAULT_AMOUNTS_RECURRING);
@@ -205,10 +233,6 @@ export default class AmountAndFrequencyConfig extends LightningElement {
         }));
     }
 
-    handleToggleFrequency() {
-        this._frequencyOpen = !this._frequencyOpen;
-    }
-
     handleShowOneTimeChange(event) {
         this._showOneTime = event.target.checked;
         if (!this._showOneTime && this._defaultFrequency === 'oneTime') this._defaultFrequency = 'recurring';
@@ -240,20 +264,53 @@ export default class AmountAndFrequencyConfig extends LightningElement {
         this._emit('presetAmountsRecurring', toAmountString(this._presetsRecurring));
     }
 
+    handleMinAmountInput(event) {
+        this._sanitizeConfigAmountInput(event);
+    }
+
     handleMinAmountChange(event) {
-        const val = parseInt(event.target.value, 10);
-        if (!isNaN(val) && val >= 0) {
-            this._minAmount = val;
-            this._emit('minAmount', val, 'Number');
+        const raw = event.target.value;
+        const parsed = parseFloat(raw);
+        if (!isNaN(parsed) && parsed > 0) {
+            this._minAmount = parsed;
+            this._emit('minAmount', parsed, 'Number');
+        } else if (raw === '') {
+            this._minAmount = 0;
+            this._emit('minAmount', 0, 'Number');
         }
+    }
+
+    handleMaxAmountInput(event) {
+        this._sanitizeConfigAmountInput(event);
     }
 
     handleMaxAmountChange(event) {
         const raw = event.target.value;
-        const val = raw === '' ? 0 : parseInt(raw, 10);
+        const val = raw === '' ? 0 : parseFloat(raw);
         if (!isNaN(val) && val >= 0) {
             this._maxAmount = val;
             this._emit('maxAmount', val, 'Number');
         }
+    }
+
+    handleCurrencyChange(event) {
+        const type = event.detail.newValueDataType ?? 'String';
+        const raw  = event.detail.newValue ?? '';
+        const val  = type === 'String' ? raw.toUpperCase() : raw;
+
+        if (type === 'String' && val) {
+            try {
+                new Intl.NumberFormat('en-US', { style: 'currency', currency: val });
+                this._currencyError = '';
+            } catch {
+                this._currencyError = `"${val}" is not a valid ISO 4217 currency code.`;
+            }
+        } else {
+            this._currencyError = '';
+        }
+
+        this._defaultCurrencyValue     = val;
+        this._defaultCurrencyValueType = type;
+        this._emit('defaultCurrency', val, type);
     }
 }

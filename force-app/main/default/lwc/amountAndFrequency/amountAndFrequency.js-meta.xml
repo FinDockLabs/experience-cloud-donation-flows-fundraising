@@ -19,12 +19,12 @@
             <property name="minAmount" type="Integer" role="inputOnly" label="Minimum amount" description="Minimum accepted value in the custom amount field." default="1"/>
             <property name="maxAmount" type="Integer" role="inputOnly" label="Maximum amount (0 = none)" description="Maximum accepted value. Set to 0 for no limit." default="0"/>
 
-            <property name="defaultCurrency" type="String" role="inputOnly" label="Default currency code" description="ISO 4217 code passed in from the Currency Picker component, e.g. EUR."/>
+            <property name="defaultCurrency" type="String" role="inputOnly" label="Default currency code" description="ISO 4217 code (e.g. EUR) or a flow variable that provides the currency at runtime."/>
             <property name="defaultFrequency" type="String" role="inputOnly" label="Default frequency" description="Frequency pre-selected when the component loads, e.g. oneTime or recurring." default="oneTime"/>
 
             <property name="frequency"        type="String"  role="outputOnly" label="Frequency" description="API value of the selected frequency (matches freq1Value or freq2Value)."/>
-            <property name="amountOneTime"    type="Integer" role="outputOnly" label="Amount — one-time" description="Amount when frequency is one-time; null otherwise."/>
-            <property name="amountRecurring"  type="Integer" role="outputOnly" label="Amount — recurring" description="Amount when frequency is recurring; null otherwise."/>
+            <property name="amountOneTime"    type="String" role="outputOnly" label="Amount — one-time" description="Amount when frequency is one-time; null otherwise."/>
+            <property name="amountRecurring"  type="String" role="outputOnly" label="Amount — recurring" description="Amount when frequency is recurring; null otherwise."/>
             <property name="selectedCurrency" type="String"  role="outputOnly" label="Selected currency" description="ISO 4217 code of the currency chosen on the form."/>
         </targetConfig>
     </targetConfigs>
