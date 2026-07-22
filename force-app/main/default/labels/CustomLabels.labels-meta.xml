@@ -3,7 +3,7 @@
     <!-- Experience Progress Stages -->
     <labels>
         <fullName>ec_sr_progress_stage_announcement</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Aria live region announcement text on step change</shortDescription>
@@ -11,7 +11,7 @@
     </labels>
     <labels>
         <fullName>ec_stage_label_amount</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Default label for the amount step in the progress indicator</shortDescription>
@@ -19,7 +19,7 @@
     </labels>
     <labels>
         <fullName>ec_stage_label_information</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Default label for the information step in the progress indicator</shortDescription>
@@ -27,7 +27,7 @@
     </labels>
     <labels>
         <fullName>ec_stage_label_payment</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Default label for the payment step in the progress indicator</shortDescription>
@@ -36,7 +36,7 @@
     <!-- Amount And Frequency -->
     <labels>
         <fullName>ec_label_donation_amount_heading</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Donation amount section heading</shortDescription>
@@ -44,7 +44,7 @@
     </labels>
     <labels>
         <fullName>ec_label_amount_max_error</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Custom amount exceeds maximum validation message</shortDescription>
@@ -52,7 +52,7 @@
     </labels>
     <labels>
         <fullName>ec_label_amount_min_error</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Custom amount below minimum validation message</shortDescription>
@@ -60,7 +60,7 @@
     </labels>
     <labels>
         <fullName>ec_label_give_once</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Give once frequency option</shortDescription>
@@ -68,7 +68,7 @@
     </labels>
     <labels>
         <fullName>ec_label_monthly</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Monthly frequency option</shortDescription>
@@ -76,7 +76,7 @@
     </labels>
     <labels>
         <fullName>ec_label_other_amount</fullName>
-        <categories>Experience Cloud</categories>
+        <categories>FinDock, Experience Cloud</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Custom amount input label</shortDescription>
@@ -84,7 +84,7 @@
     </labels>
     <labels>
         <fullName>ec_label_donation_frequency</fullName>
-        <categories>Accessibility</categories>
+        <categories>FinDock, Accessibility</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Assistive text for the donation frequency group</shortDescription>
@@ -92,7 +92,7 @@
     </labels>
     <labels>
         <fullName>ec_label_preset_amount_group</fullName>
-        <categories>Accessibility</categories>
+        <categories>FinDock, Accessibility</categories>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Assistive text for the preset donation amount group</shortDescription>
