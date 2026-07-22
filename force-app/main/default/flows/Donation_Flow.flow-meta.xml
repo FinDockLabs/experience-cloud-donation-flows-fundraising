@@ -708,7 +708,7 @@
             <name>Pay_Button</name>
             <dataTypeMappings>
                 <typeName>recurringType</typeName>
-                <typeValue>GiftCommitmentSchedule</typeValue>
+                <typeValue>GiftCommitment</typeValue>
             </dataTypeMappings>
             <extensionName>cpm:payButton</extensionName>
             <fieldType>ComponentInstance</fieldType>
@@ -928,6 +928,6 @@
         <isCollection>false</isCollection>
         <isInput>false</isInput>
         <isOutput>false</isOutput>
-        <objectType>GiftCommitmentSchedule</objectType>
+        <objectType>GiftCommitment</objectType>
     </variables>
 </Flow>
