@@ -26,6 +26,7 @@
             <property name="amountOneTime"    type="String" role="outputOnly" label="Amount — one-time" description="Amount when frequency is one-time; null otherwise."/>
             <property name="amountRecurring"  type="String" role="outputOnly" label="Amount — recurring" description="Amount when frequency is recurring; null otherwise."/>
             <property name="selectedCurrency" type="String"  role="outputOnly" label="Selected currency" description="ISO 4217 code of the currency chosen on the form."/>
+            <property name="isAmountSelected" type="Boolean" role="outputOnly" label="Amount selected" description="True when an amount greater than zero is selected. Use in visibility rules to reveal fields once the donor picks an amount."/>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

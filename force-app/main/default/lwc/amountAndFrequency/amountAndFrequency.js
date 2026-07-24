@@ -89,6 +89,11 @@ export default class AmountAndFrequency extends LightningElement {
         return this.defaultCurrency;
     }
 
+    @api
+    get isAmountSelected() {
+        return this._amount !== null && this._amount > 0;
+    }
+
     // Routes preset read/write to the bucket that matches the active frequency.
     get _selectedPreset() {
         return this._frequency === this.freq2Value
@@ -368,13 +373,15 @@ export default class AmountAndFrequency extends LightningElement {
             frequency:        this._frequency,
             amountOneTime:    this.amountOneTime,
             amountRecurring:  this.amountRecurring,
-            selectedCurrency: this.defaultCurrency
+            selectedCurrency: this.defaultCurrency,
+            isAmountSelected: this.isAmountSelected
         };
         this.dispatchEvent(new CustomEvent('amountfrequencychange', { detail }));
         this.dispatchEvent(new FlowAttributeChangeEvent('frequency',        detail.frequency));
         this.dispatchEvent(new FlowAttributeChangeEvent('amountOneTime',    detail.amountOneTime));
         this.dispatchEvent(new FlowAttributeChangeEvent('amountRecurring',  detail.amountRecurring));
         this.dispatchEvent(new FlowAttributeChangeEvent('selectedCurrency', detail.selectedCurrency));
+        this.dispatchEvent(new FlowAttributeChangeEvent('isAmountSelected', detail.isAmountSelected));
     }
 
     _storageKey() {
