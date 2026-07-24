@@ -111,19 +111,12 @@
                 </width>
             </styleProperties>
             <visibilityRule>
-                <conditionLogic>or</conditionLogic>
+                <conditionLogic>and</conditionLogic>
                 <conditions>
-                    <leftValueReference>amountAndFrequency.amountOneTime</leftValueReference>
-                    <operator>GreaterThan</operator>
+                    <leftValueReference>amountAndFrequency.isAmountSelected</leftValueReference>
+                    <operator>EqualTo</operator>
                     <rightValue>
-                        <numberValue>0.0</numberValue>
-                    </rightValue>
-                </conditions>
-                <conditions>
-                    <leftValueReference>amountAndFrequency.amountRecurring</leftValueReference>
-                    <operator>GreaterThan</operator>
-                    <rightValue>
-                        <numberValue>0.0</numberValue>
+                        <booleanValue>true</booleanValue>
                     </rightValue>
                 </conditions>
             </visibilityRule>
@@ -196,19 +189,12 @@
                 </width>
             </styleProperties>
             <visibilityRule>
-                <conditionLogic>or</conditionLogic>
+                <conditionLogic>and</conditionLogic>
                 <conditions>
-                    <leftValueReference>amountAndFrequency.amountOneTime</leftValueReference>
-                    <operator>GreaterThan</operator>
+                    <leftValueReference>amountAndFrequency.isAmountSelected</leftValueReference>
+                    <operator>EqualTo</operator>
                     <rightValue>
-                        <numberValue>0.0</numberValue>
-                    </rightValue>
-                </conditions>
-                <conditions>
-                    <leftValueReference>amountAndFrequency.amountRecurring</leftValueReference>
-                    <operator>GreaterThan</operator>
-                    <rightValue>
-                        <numberValue>0.0</numberValue>
+                        <booleanValue>true</booleanValue>
                     </rightValue>
                 </conditions>
             </visibilityRule>
@@ -235,19 +221,12 @@
                 </width>
             </styleProperties>
             <visibilityRule>
-                <conditionLogic>or</conditionLogic>
+                <conditionLogic>and</conditionLogic>
                 <conditions>
-                    <leftValueReference>amountAndFrequency.amountOneTime</leftValueReference>
-                    <operator>GreaterThan</operator>
+                    <leftValueReference>amountAndFrequency.isAmountSelected</leftValueReference>
+                    <operator>EqualTo</operator>
                     <rightValue>
-                        <numberValue>0.0</numberValue>
-                    </rightValue>
-                </conditions>
-                <conditions>
-                    <leftValueReference>amountAndFrequency.amountRecurring</leftValueReference>
-                    <operator>GreaterThan</operator>
-                    <rightValue>
-                        <numberValue>0.0</numberValue>
+                        <booleanValue>true</booleanValue>
                     </rightValue>
                 </conditions>
             </visibilityRule>
