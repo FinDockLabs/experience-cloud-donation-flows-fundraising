@@ -78,6 +78,10 @@
             <source>Loading payment methods</source>
             <target></target>
         </trans-unit>
+        <trans-unit id="CustomLabel.cpm__ec_validation_value_invalid" maxwidth="1000" size-unit="char">
+            <source>This value is invalid</source>
+            <target></target>
+        </trans-unit>
         </body>
     </file>
 </xliff>
