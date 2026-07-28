@@ -98,4 +98,21 @@
         <shortDescription>Assistive text for the preset donation amount group</shortDescription>
         <value>Select a preset donation amount</value>
     </labels>
+    <labels>
+        <fullName>ec_label_currency</fullName>
+        <categories>FinDock, Experience Cloud</categories>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Currency selector label</shortDescription>
+        <value>Currency</value>
+    </labels>
+    <labels>
+        <fullName>ec_label_amount_in_currency</fullName>
+        <categories>FinDock, Accessibility</categories>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Assistive text describing the currency of the amount field ({0} = currency name)
+        </shortDescription>
+        <value>Amount in {0}</value>
+    </labels>
 </CustomLabels>
