@@ -7,7 +7,6 @@ const DEFAULT_AMOUNTS_ONE_TIME  = '25,50,100,250,500,1000';
 const DEFAULT_AMOUNTS_RECURRING = '5,10,25,60,125,250';
 const DEFAULT_FREQ_1_VALUE      = 'oneTime';
 const DEFAULT_FREQ_2_VALUE      = 'recurring';
-
 // Module-level counter ensures unique DOM IDs when multiple instances are on the same page.
 let _nextInstanceId = 0;
 
@@ -41,28 +40,20 @@ export default class AmountAndFrequency extends LightningElement {
         return this._currencyCode;
     }
     set currencyCode(value) {
-        const next = (value || '').toUpperCase();
+      const next = (value || '').toUpperCase();
         if (this._currencyCode === next) return;
-
-        const oldCurrency = this._currencyCode;
         this._currencyCode = next;
-
         // Clear custom amount if it has more decimal places than the new currency allows.
-        // Rounding or truncating silently would change the payment amount without user awareness.
-        if (oldCurrency && this._customAmount !== '') {
+        // Rounding or truncating silently would change the payment amount without user awareness,
+        // which is unacceptable for a payment form — the user must re-enter the amount explicitly.
+        if (this._customAmount !== '') {
             const dotIdx = this._customAmount.indexOf('.');
             const decimals = this._currencyDecimals;
-
-            if (decimals === 0 && dotIdx !== -1) {
+            if (dotIdx !== -1 && this._customAmount.length - dotIdx - 1 > decimals) {
                 this._customAmount = '';
-            } else if (dotIdx !== -1 && this._customAmount.length - dotIdx - 1 > decimals) {
-                this._customAmount = '';
-            } else {
-                this._validateAmount(Number(this._customAmount));
+                this._dispatchChange();
             }
         }
-
-        this._dispatchChange();
     }
 
     @api
@@ -83,26 +74,18 @@ export default class AmountAndFrequency extends LightningElement {
         return this._selectedPreset;
     }
 
-    // Exact string view of the active amount for the emitted output. A custom amount is passed through
-    // verbatim (no Number round-trip) so high-precision values reach the payment unchanged; a preset
-    // is a plain number and stringifies safely.
-    get _amountString() {
-        if (this._customAmount !== '') {
-            return Number.isNaN(Number(this._customAmount)) ? null : this._customAmount;
-        }
-        return this._selectedPreset !== null ? String(this._selectedPreset) : null;
-    }
-
     @api
     get amountOneTime() {
         if (this._frequency !== 'oneTime') return null;
-        return this._amountString;
+        const amt = this._amount;
+        return amt !== null ? String(amt) : null;
     }
 
     @api
     get amountRecurring() {
         if (this._frequency !== 'recurring') return null;
-        return this._amountString;
+        const amt = this._amount;
+        return amt !== null ? String(amt) : null;
     }
 
     @api
@@ -157,7 +140,10 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     get customAmountDescribedBy() {
-        return `${this.currencyDescriptionId} ${this.customAmountErrorId}`;
+        // Only reference the error node while it actually exists — a dangling IDREF is an a11y defect.
+        return this._validationError
+            ? `${this.currencyDescriptionId} ${this.customAmountErrorId}`
+            : this.currencyDescriptionId;
     }
 
     // Localized currency name for assistive text, e.g. "Euro" (en) / "euro" (fr).
@@ -305,9 +291,20 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     handleCustomAmountInput(event) {
-        // Accept locale-formatted input: strip the locale grouping separator and normalise the
-        // decimal separator to "." (e.g. fr "25,50" and de "1.234,56" both → "1234.56"/"25.50").
-        const val = this._trimToCurrencyDecimals(toPlainNumberString(event.target.value, this._locale));
+        let val = event.target.value;
+        val = val.replace(',', '.');
+        val = val.replace(/[^0-9.]/g, '');
+        const firstDot = val.indexOf('.');
+        if (firstDot !== -1) {
+            val = val.substring(0, firstDot + 1) + val.substring(firstDot + 1).replace(/\./g, '');
+        }
+        const decimals = this._currencyDecimals;
+        const dotIdx = val.indexOf('.');
+        if (decimals === 0 && dotIdx !== -1) {
+            val = val.substring(0, dotIdx);
+        } else if (decimals > 0 && dotIdx !== -1 && val.length - dotIdx - 1 > decimals) {
+            val = val.substring(0, dotIdx + decimals + 1);
+        }
         event.target.value = val;
         this._customAmount   = val;
         this._selectedPreset = val !== '' ? null : this._selectedPreset;
@@ -315,43 +312,18 @@ export default class AmountAndFrequency extends LightningElement {
         this._dispatchChange();
     }
 
-    // Drop any decimals the currency doesn't allow. String-based (no Number) so high-precision
-    // integer amounts survive; only the fractional tail past the currency's precision is cut.
-    _trimToCurrencyDecimals(plainVal) {
-        const decimals = this._currencyDecimals;
-        const dotIdx = plainVal.indexOf('.');
-        if (dotIdx === -1) return plainVal;
-        if (decimals === 0) return plainVal.substring(0, dotIdx);
-        if (plainVal.length - dotIdx - 1 > decimals) return plainVal.substring(0, dotIdx + decimals + 1);
-        return plainVal;
-    }
-
     handleCustomAmountFocus(event) {
-        // Show the value in the locale format (decimal separator matching blur), never the raw
-        // dot-decimal internal value. In comma-decimal locales "." is the grouping separator, so
-        // writing back "25.5" would make the next keystroke reparse it as 255 (a payment-amount
-        // corruption). Formatting keeps focus and blur symmetric.
-        event.target.value = this._formatForEditing(this._customAmount);
+        event.target.value = this._customAmount;
     }
 
     handleCustomAmountBlur(event) {
-        event.target.value = this._formatForEditing(this._customAmount);
-    }
-
-    // Render the dot-decimal internal amount in the active locale for display in the input, e.g.
-    // "25.5" → en "25.5" / de "25,5"
-    _formatForEditing(plainAmount) {
-        const s = String(plainAmount ?? '');
-        if (s === '' || !/^\d*\.?\d*$/.test(s) || s === '.') return '';
-
-        const { group, decimal } = localeNumberSeparators(this._locale);
-        const dot = s.indexOf('.');
-        const intPart = dot === -1 ? s : s.slice(0, dot);
-        const fracPart = dot === -1 ? '' : s.slice(dot + 1);
-
-        // Group the integer part in threes from the right using the locale's grouping separator.
-        const grouped = (intPart || '0').replace(/\B(?=(\d{3})+(?!\d))/g, group || '');
-        return fracPart ? `${grouped}${decimal}${fracPart}` : grouped;
+        if (this._customAmount === '') return;
+        const num = Number(this._customAmount);
+        if (isNaN(num)) return;
+        event.target.value = new Intl.NumberFormat(this._locale, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: this._currencyDecimals
+        }).format(num);
     }
 
     _parseAmounts(raw) {
@@ -492,47 +464,4 @@ export default class AmountAndFrequency extends LightningElement {
             // window.location unavailable in SSR / test environments.
         }
     }
-}
-
-// Grouping/decimal separators for a locale, e.g. en-US → { group: ',', decimal: '.' },
-// de-DE → { group: '.', decimal: ',' }, fr-FR → { group: ' ', decimal: ',' }.
-function localeNumberSeparators(locale) {
-    try {
-        const parts = new Intl.NumberFormat(locale).formatToParts(11111.1);
-        return {
-            group: parts.find((p) => p.type === 'group')?.value ?? '',
-            decimal: parts.find((p) => p.type === 'decimal')?.value ?? '.'
-        };
-    } catch {
-        return { group: '', decimal: '.' };
-    }
-}
-
-// Normalise a locale-formatted amount string to a plain "1234.56" string: drop the locale's
-// grouping separator and convert its decimal separator to ".". Anything else non-numeric is
-// stripped, and only the first decimal point is kept.
-export function toPlainNumberString(raw, locale) {
-    const { group, decimal } = localeNumberSeparators(locale);
-    let s = String(raw ?? '');
-
-    // In comma-decimal locales (de/nl) the group separator is "." and the decimal is ",". A user
-    // typing "25.50" means twenty-five-fifty, not 2550 — but that "." only reads as grouping when it
-    // precedes exactly 3 digits ("1.234"). The ambiguous case is real: handleCustomAmountFocus writes
-    // back the dot-decimal internal value ("25.5"), so the field can carry a "." that is actually a
-    // decimal point. Reclassify a lone "." with 1–2 trailing digits (and no locale decimal char
-    // present) as the decimal separator instead of dropping it as grouping.
-    if (group === '.' && decimal !== '.' && s.indexOf(decimal) === -1) {
-        if (/^\d+\.\d{1,2}$/.test(s)) {
-            s = s.split('.').join(decimal);
-        }
-    }
-
-    if (group) s = s.split(group).join('');
-    if (decimal && decimal !== '.') s = s.split(decimal).join('.');
-    s = s.replace(/[^0-9.]/g, '');
-    const dot = s.indexOf('.');
-    if (dot !== -1) {
-        s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '');
-    }
-    return s;
 }
