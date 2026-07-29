@@ -20,6 +20,7 @@ export default class CurrencyPicker extends LightningElement {
         const code = normalize(val);
         if (code && code !== this._value) {
             this._value = code;
+            this._selected = code;
             if (this._currencies.length && !this._currencies.includes(code)) {
                 this._currencies = dedupe([...this._currencies, code]);
             }
@@ -30,6 +31,7 @@ export default class CurrencyPicker extends LightningElement {
 
     labels = labels;
     _currencies = [];
+    _selected = '';
 
     get options() {
         return this._currencies.map((code) => ({
@@ -55,6 +57,7 @@ export default class CurrencyPicker extends LightningElement {
         const explicit = dedupe((this.allowedCurrencies || '').split(',').map(normalize).filter(Boolean));
         if (explicit.length) {
             this._applyCurrencies(explicit);
+            this._emit();
             return;
         }
         this._applyCurrencies(this._fallbackSingle());
@@ -71,13 +74,13 @@ export default class CurrencyPicker extends LightningElement {
             })
             .catch(() => {
                 /* keep the fallback */
-            });
+            })
+            .finally(() => this._emit());
     }
 
     _applyCurrencies(list) {
         this._currencies = list.length ? list : this._fallbackSingle();
         this._value = this._resolveInitial();
-        this._emit();
     }
 
     _fallbackSingle() {
@@ -86,6 +89,11 @@ export default class CurrencyPicker extends LightningElement {
     }
 
     _resolveInitial() {
+        // Keep an explicit selection (set via the `value` setter before auto-detect resolves)
+        // when it is still valid, so a late currency list never overrides it.
+        if (this._selected && this._currencies.includes(this._selected)) {
+            return this._selected;
+        }
         const preferred = normalize(this.defaultCurrency);
         if (preferred && this._currencies.includes(preferred)) {
             return preferred;
@@ -100,6 +108,7 @@ export default class CurrencyPicker extends LightningElement {
 
     handleChange(event) {
         this._value = event.detail.value;
+        this._selected = event.detail.value;
         this._emit();
     }
 }

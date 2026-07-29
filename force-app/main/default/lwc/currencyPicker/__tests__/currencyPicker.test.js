@@ -100,6 +100,30 @@ describe('c-currency-picker', () => {
         });
     });
 
+    it('emits currencychange exactly once during auto-detect (no intermediate fallback emit)', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD', 'GBP']);
+        const { element, changes } = mount({}); // no allow-list → triggers auto-detect
+        expect(changes).toEqual([]); // fallback is applied silently, before Apex resolves
+        await flush();
+        expect(changes).toEqual(['EUR']); // single emit with the auto-detected value
+        expect(element.value).toBe('EUR');
+    });
+
+    it('emits once even when Apex returns a single/zero-currency org', async () => {
+        getActiveCurrencies.mockResolvedValueOnce([]);
+        const { changes } = mount({ defaultCurrency: 'GBP' });
+        expect(changes).toEqual([]);
+        await flush();
+        expect(changes).toEqual(['GBP']);
+    });
+
+    it('keeps an externally set value when a late auto-detect list still contains it', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD', 'GBP']);
+        const { element } = mount({ value: 'GBP' }); // parent/Flow sets value before Apex resolves
+        await flush();
+        expect(element.value).toBe('GBP'); // not overridden by codes[0]
+    });
+
     it('emits currencychange when the payer switches currency', () => {
         const { element, changes } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
         expect(changes).toEqual(['EUR']); // initial
