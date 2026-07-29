@@ -17,43 +17,45 @@
             </div>
         </template>
         <template lwc:if={showSingleCurrencyNotice}>
-            <p class="field__help">Your org has a single active currency, so payers can't switch currency here.</p>
+            <p class="field__help">Your org has a single active currency, so it is used automatically and payers can't switch currency here.</p>
         </template>
 
-        <!-- Default Currency Dropdown -->
-        <div class="field">
-            <span class="field__label">Default currency</span>
-            <p class="field__help">Pick a fixed currency shown when the form loads, or select a Flow variable that provides it at runtime.</p>
-            <lightning-combobox
-                variant="label-hidden"
-                name="defaultCurrencySelect"
-                placeholder="Select a default"
-                options={defaultOptions}
-                value={comboboxValue}
-                onchange={handleComboboxChange}>
-            </lightning-combobox>
-            <template lwc:if={defaultCurrencyError}>
-                <p class="field__error" role="alert">{defaultCurrencyError}</p>
-            </template>
-        </div>
+        <!-- Default currency (hidden in a single-currency org: that currency is used automatically) -->
+        <template lwc:if={showDefaultSelector}>
+            <div class="field">
+                <span class="field__label">Default currency</span>
+                <p class="field__help">Pick a fixed currency shown when the form loads, or select a Flow variable that provides it at runtime.</p>
+                <lightning-combobox
+                    variant="label-hidden"
+                    name="defaultCurrencySelect"
+                    placeholder="Select a default"
+                    options={defaultOptions}
+                    value={comboboxValue}
+                    onchange={handleComboboxChange}>
+                </lightning-combobox>
+                <template lwc:if={defaultCurrencyError}>
+                    <p class="field__error" role="alert">{defaultCurrencyError}</p>
+                </template>
+            </div>
 
-        <!-- Conditional Flow Variable Input -->
-        <template lwc:if={showVariableInput}>
-            <cpm-flow-field-set
-                    label="Default currency source"
-                    description="Select a flow variable that provides the currency at runtime.">
-                <cpm-flow-variable-input
-                        name="defaultCurrency"
-                        label="Default currency"
-                        variant="label-hidden"
-                        builder-context-filter-type="String"
-                        value={defaultCurrencyValue}
-                        value-type={defaultCurrencyValueType}
-                        builder-context={builderContext}
-                        automatic-output-variables={automaticOutputVariables}
-                        onvaluechange={handleVariableChange}>
-                </cpm-flow-variable-input>
-            </cpm-flow-field-set>
+            <!-- Conditional Flow Variable Input -->
+            <template lwc:if={showVariableInput}>
+                <cpm-flow-field-set
+                        label="Default currency source"
+                        description="Select a flow variable that provides the currency at runtime.">
+                    <cpm-flow-variable-input
+                            name="defaultCurrency"
+                            label="Default currency"
+                            variant="label-hidden"
+                            builder-context-filter-type="String"
+                            value={defaultCurrencyValue}
+                            value-type={defaultCurrencyValueType}
+                            builder-context={builderContext}
+                            automatic-output-variables={automaticOutputVariables}
+                            onvaluechange={handleVariableChange}>
+                    </cpm-flow-variable-input>
+                </cpm-flow-field-set>
+            </template>
         </template>
     </div>
 </template>

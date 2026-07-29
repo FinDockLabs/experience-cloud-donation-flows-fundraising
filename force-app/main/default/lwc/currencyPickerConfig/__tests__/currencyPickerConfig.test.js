@@ -2,6 +2,13 @@ import { createElement } from 'lwc';
 import currencyPickerConfig from 'c/currencyPickerConfig';
 import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getActiveCurrencies';
 
+// The Apex stub is a jest mock so each test can supply the org's active currencies.
+jest.mock(
+    '@salesforce/apex/CurrencyPickerController.getActiveCurrencies',
+    () => ({ default: jest.fn(() => Promise.resolve([])) }),
+    { virtual: true }
+);
+
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function mount(inputVariables = []) {
@@ -42,6 +49,21 @@ describe('c-currency-picker-cpe', () => {
         element.addEventListener('configuration_editor_input_value_changed', (e) => changed.push(e.detail));
         await flush();
         expect(changed).toContainEqual({ name: 'defaultCurrency', newValue: 'EUR', newValueDataType: 'String' });
+    });
+
+    it('hides the default-currency selector in a single-currency org', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR']);
+        const element = mount([]);
+        await flush();
+        // No selector to configure: the sole currency is applied automatically.
+        expect(element.shadowRoot.querySelector('lightning-combobox')).toBeNull();
+    });
+
+    it('does not require a default currency in a single-currency org', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR']);
+        const element = mount([]);
+        await flush();
+        expect(element.validate()).toEqual([]);
     });
 
     it('pre-fills the multi-select from the allowedCurrencies CSV input variable', () => {

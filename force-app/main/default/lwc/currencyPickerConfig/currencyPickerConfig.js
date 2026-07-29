@@ -90,6 +90,10 @@ export default class currencyPickerConfig extends LightningElement {
         return this._currenciesLoaded && !this.showAllowed;
     }
 
+    get showDefaultSelector() {
+        return !this.showSingleCurrencyNotice;
+    }
+
     get defaultCurrencyError() {
         return this._defaultCurrencyError;
     }
@@ -102,6 +106,9 @@ export default class currencyPickerConfig extends LightningElement {
     @api
     validate() {
         this._defaultCurrencyError = '';
+        if (this.showSingleCurrencyNotice) {
+            return [];
+        }
         if (!this.comboboxValue) {
             this._defaultCurrencyError = 'Select a default currency source.';
         } else if (this.comboboxValue === FLOW_VAR_OPTION && !this._defaultCurrencyValue) {

@@ -16,7 +16,9 @@ public with sharing class CurrencyPickerController {
         }
 
         List<String> codes = new List<String>();
-        for (SObject ct : Database.query('SELECT IsoCode FROM CurrencyType WHERE IsActive = TRUE ORDER BY IsoCode')) {
+        for (SObject ct : Database.query(
+                'SELECT IsoCode FROM CurrencyType WHERE IsActive = TRUE ORDER BY IsoCode',
+                System.AccessLevel.SYSTEM_MODE)) {
             codes.add((String) ct.get('IsoCode'));
         }
         return codes;

@@ -4,6 +4,11 @@ import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getAc
 
 // @salesforce/i18n/currency is mocked to 'USD' (jest-mocks/i18n/currency).
 // getActiveCurrencies is mocked to a single-currency org (empty list) by default.
+jest.mock(
+    '@salesforce/apex/CurrencyPickerController.getActiveCurrencies',
+    () => ({ default: jest.fn(() => Promise.resolve([])) }),
+    { virtual: true }
+);
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
