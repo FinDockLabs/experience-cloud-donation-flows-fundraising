@@ -7,6 +7,7 @@ const DEFAULT_AMOUNTS_ONE_TIME  = '25,50,100,250,500,1000';
 const DEFAULT_AMOUNTS_RECURRING = '5,10,25,60,125,250';
 const DEFAULT_FREQ_1_VALUE      = 'oneTime';
 const DEFAULT_FREQ_2_VALUE      = 'recurring';
+
 // Module-level counter ensures unique DOM IDs when multiple instances are on the same page.
 let _nextInstanceId = 0;
 
@@ -17,7 +18,7 @@ export default class AmountAndFrequency extends LightningElement {
     _selectedPresetRecurring = null;
     _customAmount = '';
     _validationError         = '';
-    _defaultCurrency         = '';
+    _currencyCode            = '';
 
     labels = labels;
 
@@ -32,26 +33,36 @@ export default class AmountAndFrequency extends LightningElement {
     @api maxAmount       = 0;
     @api defaultFrequency = '';
 
+    // Value written to the recurring record's Frequency field (e.g. Monthly, Weekly).
+    @api recurringFrequency = 'Monthly';
+
     @api
-    get defaultCurrency() {
-        return this._defaultCurrency;
+    get currencyCode() {
+        return this._currencyCode;
     }
-    set defaultCurrency(value) {
+    set currencyCode(value) {
         const next = (value || '').toUpperCase();
-        if (this._defaultCurrency === next) return;
-        this._defaultCurrency = next;
+        if (this._currencyCode === next) return;
+
+        const oldCurrency = this._currencyCode;
+        this._currencyCode = next;
+
         // Clear custom amount if it has more decimal places than the new currency allows.
-        // Rounding or truncating silently would change the payment amount without user awareness,
-        // which is unacceptable for a payment form — the user must re-enter the amount explicitly.
-        if (this._customAmount !== '') {
+        // Rounding or truncating silently would change the payment amount without user awareness.
+        if (oldCurrency && this._customAmount !== '') {
             const dotIdx = this._customAmount.indexOf('.');
             const decimals = this._currencyDecimals;
-            if (dotIdx !== -1 && this._customAmount.length - dotIdx - 1 > decimals) {
+
+            if (decimals === 0 && dotIdx !== -1) {
                 this._customAmount = '';
-                this._dispatchChange();
+            } else if (dotIdx !== -1 && this._customAmount.length - dotIdx - 1 > decimals) {
+                this._customAmount = '';
+            } else {
+                this._validateAmount(Number(this._customAmount));
             }
         }
-        this.dispatchEvent(new FlowAttributeChangeEvent('selectedCurrency', next));
+
+        this._dispatchChange();
     }
 
     @api
@@ -85,11 +96,6 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     @api
-    get selectedCurrency() {
-        return this.defaultCurrency;
-    }
-
-    @api
     get isAmountSelected() {
         return this._amount !== null && this._amount > 0;
     }
@@ -109,7 +115,7 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     get _locale() {
-        return LOCALE ? LOCALE.replace('_', '-') : 'en-US';
+        return LOCALE ? LOCALE.replace(/_/g, '-') : 'en-US';
     }
 
     get frequencyGroupName(){
@@ -136,6 +142,31 @@ export default class AmountAndFrequency extends LightningElement {
         return `custom-amount-error-${this._instanceId}`;
     }
 
+    get currencyDescriptionId() {
+        return `currency-desc-${this._instanceId}`;
+    }
+
+    get customAmountDescribedBy() {
+        return `${this.currencyDescriptionId} ${this.customAmountErrorId}`;
+    }
+
+    // Localized currency name for assistive text, e.g. "Euro" (en) / "euro" (fr).
+    get _currencyName() {
+        const code = this.currencyCode;
+        if (!code) return '';
+        try {
+            return new Intl.DisplayNames([this._locale], { type: 'currency' }).of(code) || code;
+        } catch {
+            return code;
+        }
+    }
+
+    // e.g. "Amount in Euro" — read out when the amount input gains focus, since the visual currency symbol is decorative
+    get currencyAssistiveText() {
+        const name = this._currencyName;
+        return name ? this.labels.ec_label_amount_in_currency.replace('{0}', name) : '';
+    }
+
     get isFreq1Selected() {
         return this._frequency === this.freq1Value;
     }
@@ -153,22 +184,22 @@ export default class AmountAndFrequency extends LightningElement {
         const presets = this._resolveActivePresets() || [];
         return presets.map(amount => ({
             value:      amount,
-            label:      this._formatPresetAmount(amount, this.defaultCurrency, this._locale),
+            label:      this._formatPresetAmount(amount, this.currencyCode, this._locale),
             inputId:    `${this._instanceId}-preset-${amount}`,
             isSelected: this._selectedPreset === amount && this._customAmount === ''
         }));
     }
 
     get currencySymbol() {
-        return this._getCurrencySymbolInfo(this.defaultCurrency, this._locale).symbol;
+        return this._getCurrencySymbolInfo(this.currencyCode, this._locale).symbol;
     }
 
     get isCurrencyPrefix() {
-        return this._getCurrencySymbolInfo(this.defaultCurrency, this._locale).position === 'prefix';
+        return this._getCurrencySymbolInfo(this.currencyCode, this._locale).position === 'prefix';
     }
 
     get isCurrencySuffix() {
-        return this._getCurrencySymbolInfo(this.defaultCurrency, this._locale).position === 'suffix';
+        return this._getCurrencySymbolInfo(this.currencyCode, this._locale).position === 'suffix';
     }
 
     get customAmountMin() {
@@ -181,10 +212,11 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     get _currencyDecimals() {
+        if (!this.currencyCode) return 2;
         try {
             return new Intl.NumberFormat(this._locale, {
                 style: 'currency',
-                currency: this.defaultCurrency
+                currency: this.currencyCode
             }).resolvedOptions().maximumFractionDigits;
         } catch {
             return 2;
@@ -243,6 +275,8 @@ export default class AmountAndFrequency extends LightningElement {
         if (this._customAmount !== '') {
             this._validateAmount(Number(this._customAmount));
         }
+
+        this._dispatchChange();
     }
 
     disconnectedCallback() {
@@ -263,13 +297,9 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     handleCustomAmountInput(event) {
-        let val = event.target.value;
-        val = val.replace(',', '.');
-        val = val.replace(/[^0-9.]/g, '');
-        const firstDot = val.indexOf('.');
-        if (firstDot !== -1) {
-            val = val.substring(0, firstDot + 1) + val.substring(firstDot + 1).replace(/\./g, '');
-        }
+        // Accept locale-formatted input: strip the locale grouping separator and normalise the
+        // decimal separator to "." (e.g. fr "25,50" and de "1.234,56" both → "1234.56"/"25.50").
+        let val = toPlainNumberString(event.target.value, this._locale);
         const decimals = this._currencyDecimals;
         const dotIdx = val.indexOf('.');
         if (decimals === 0 && dotIdx !== -1) {
@@ -308,6 +338,9 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     _getCurrencySymbolInfo(currencyCode, locale) {
+        if (!currencyCode) {
+            return { symbol: '', position: 'prefix' };
+        }
         try {
             const parts = new Intl.NumberFormat(locale, {
                 style: 'currency',
@@ -328,14 +361,14 @@ export default class AmountAndFrequency extends LightningElement {
 
     _formatPresetAmount(amount, currencyCode, locale) {
         try {
-            return new Intl.NumberFormat(locale, {
-                style: 'currency',
-                currency: currencyCode,
-                currencyDisplay: 'narrowSymbol',
-                minimumFractionDigits: 0
-            }).format(amount);
+            // Without a currency, fall back to a plain localized number instead of a placeholder
+            // currency so the form never shows amounts in a currency the payer didn't pick.
+            const options = currencyCode
+                ? { style: 'currency', currency: currencyCode, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 0 }
+                : { style: 'decimal', minimumFractionDigits: 0 };
+            return new Intl.NumberFormat(locale, options).format(amount);
         } catch {
-            return `${currencyCode} ${amount}`;
+            return `${currencyCode} ${amount}`.trim();
         }
     }
 
@@ -356,12 +389,12 @@ export default class AmountAndFrequency extends LightningElement {
         if (isNaN(num) || num < min) {
             this._validationError = this.labels.ec_label_amount_min_error.replace(
                 '{0}',
-                this._formatPresetAmount(min, this.defaultCurrency, this._locale)
+                this._formatPresetAmount(min, this.currencyCode, this._locale)
             );
         } else if (max !== null && num > max) {
             this._validationError = this.labels.ec_label_amount_max_error.replace(
                 '{0}',
-                this._formatPresetAmount(max, this.defaultCurrency, this._locale)
+                this._formatPresetAmount(max, this.currencyCode, this._locale)
             );
         } else {
             this._validationError = '';
@@ -373,15 +406,16 @@ export default class AmountAndFrequency extends LightningElement {
             frequency:        this._frequency,
             amountOneTime:    this.amountOneTime,
             amountRecurring:  this.amountRecurring,
-            selectedCurrency: this.defaultCurrency,
-            isAmountSelected: this.isAmountSelected
+            isAmountSelected: this.isAmountSelected,
+            currency:         this.currencyCode
         };
         this.dispatchEvent(new CustomEvent('amountfrequencychange', { detail }));
         this.dispatchEvent(new FlowAttributeChangeEvent('frequency',        detail.frequency));
         this.dispatchEvent(new FlowAttributeChangeEvent('amountOneTime',    detail.amountOneTime));
         this.dispatchEvent(new FlowAttributeChangeEvent('amountRecurring',  detail.amountRecurring));
-        this.dispatchEvent(new FlowAttributeChangeEvent('selectedCurrency', detail.selectedCurrency));
         this.dispatchEvent(new FlowAttributeChangeEvent('isAmountSelected', detail.isAmountSelected));
+        // Echo the configured recurring frequency back so the Flow can reference it (e.g. in payButton's pixConfig).
+        this.dispatchEvent(new FlowAttributeChangeEvent('recurringFrequency', this.recurringFrequency));
     }
 
     _storageKey() {
@@ -432,4 +466,34 @@ export default class AmountAndFrequency extends LightningElement {
             // window.location unavailable in SSR / test environments.
         }
     }
+}
+
+// Grouping/decimal separators for a locale, e.g. en-US → { group: ',', decimal: '.' },
+// de-DE → { group: '.', decimal: ',' }, fr-FR → { group: ' ', decimal: ',' }.
+function localeNumberSeparators(locale) {
+    try {
+        const parts = new Intl.NumberFormat(locale).formatToParts(11111.1);
+        return {
+            group: parts.find((p) => p.type === 'group')?.value ?? '',
+            decimal: parts.find((p) => p.type === 'decimal')?.value ?? '.'
+        };
+    } catch {
+        return { group: '', decimal: '.' };
+    }
+}
+
+// Normalise a locale-formatted amount string to a plain "1234.56" string: drop the locale's
+// grouping separator and convert its decimal separator to ".". Anything else non-numeric is
+// stripped, and only the first decimal point is kept.
+export function toPlainNumberString(raw, locale) {
+    const { group, decimal } = localeNumberSeparators(locale);
+    let s = String(raw ?? '');
+    if (group) s = s.split(group).join('');
+    if (decimal && decimal !== '.') s = s.split(decimal).join('.');
+    s = s.replace(/[^0-9.]/g, '');
+    const dot = s.indexOf('.');
+    if (dot !== -1) {
+        s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '');
+    }
+    return s;
 }

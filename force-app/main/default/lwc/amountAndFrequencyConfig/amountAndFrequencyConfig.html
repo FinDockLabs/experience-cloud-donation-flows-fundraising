@@ -114,23 +114,6 @@
 
     <hr class="slds-var-m-vertical_x-small"/>
 
-    <!-- ── Currency ──────────────────────────────────────────────────────── -->
-    <cpm-flow-field-set label="Currency" description="Enter an ISO 4217 code (e.g. EUR) or select a flow variable that provides the currency at runtime.">
-        <cpm-flow-variable-input
-                name="defaultCurrency"
-                label="Currency"
-                variant="label-hidden"
-                builder-context-filter-type="String"
-                value={defaultCurrencyValue}
-                value-type={defaultCurrencyValueType}
-                builder-context={builderContext}
-                automatic-output-variables={automaticOutputVariables}
-                onvaluechange={handleCurrencyChange}>
-        </cpm-flow-variable-input>
-    </cpm-flow-field-set>
-
-    <hr class="slds-var-m-vertical_x-small"/>
-
     <!-- ── Other Amount ────────────────────────────────────────────────────── -->
     <div class="slds-section slds-is-open">
         <h3 class="slds-section__title">

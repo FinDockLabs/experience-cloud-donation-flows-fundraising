@@ -1,0 +1,59 @@
+<template>
+    <div class="cpe">
+        <!-- Allowed payment currencies (only when the org has more than one currency) -->
+        <template lwc:if={showAllowed}>
+            <div class="field">
+                <span class="field__label">Allowed payment currencies</span>
+                <p class="field__help">Leave blank to offer all currencies active in your org. Limit the list to those your payment provider supports.</p>
+                <lightning-dual-listbox
+                    variant="label-hidden"
+                    name="allowedCurrencies"
+                    source-label="Available"
+                    selected-label="Offered"
+                    options={currencyOptions}
+                    value={allowedValue}
+                    onchange={handleAllowedChange}>
+                </lightning-dual-listbox>
+            </div>
+        </template>
+        <template lwc:if={showSingleCurrencyNotice}>
+            <p class="field__help">Your org has a single active currency, so payers can't switch currency here.</p>
+        </template>
+
+        <!-- Default Currency Dropdown -->
+        <div class="field">
+            <span class="field__label">Default currency</span>
+            <p class="field__help">Pick a fixed currency shown when the form loads, or select a Flow variable that provides it at runtime.</p>
+            <lightning-combobox
+                variant="label-hidden"
+                name="defaultCurrencySelect"
+                placeholder="Select a default"
+                options={defaultOptions}
+                value={comboboxValue}
+                onchange={handleComboboxChange}>
+            </lightning-combobox>
+            <template lwc:if={defaultCurrencyError}>
+                <p class="field__error" role="alert">{defaultCurrencyError}</p>
+            </template>
+        </div>
+
+        <!-- Conditional Flow Variable Input -->
+        <template lwc:if={showVariableInput}>
+            <cpm-flow-field-set
+                    label="Default currency source"
+                    description="Select a flow variable that provides the currency at runtime.">
+                <cpm-flow-variable-input
+                        name="defaultCurrency"
+                        label="Default currency"
+                        variant="label-hidden"
+                        builder-context-filter-type="String"
+                        value={defaultCurrencyValue}
+                        value-type={defaultCurrencyValueType}
+                        builder-context={builderContext}
+                        automatic-output-variables={automaticOutputVariables}
+                        onvaluechange={handleVariableChange}>
+                </cpm-flow-variable-input>
+            </cpm-flow-field-set>
+        </template>
+    </div>
+</template>
