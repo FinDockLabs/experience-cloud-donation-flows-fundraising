@@ -1,7 +1,7 @@
 import { LightningElement, api } from 'lwc';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
+import { currencyLocale, localizedCurrencyName } from 'c/currencyUtils';
 import { labels } from './amountAndFrequencyLabels';
-import LOCALE from '@salesforce/i18n/locale';
 
 const DEFAULT_AMOUNTS_ONE_TIME  = '25,50,100,250,500,1000';
 const DEFAULT_AMOUNTS_RECURRING = '5,10,25,60,125,250';
@@ -115,7 +115,7 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     get _locale() {
-        return LOCALE ? LOCALE.replace(/_/g, '-') : 'en-US';
+        return currencyLocale();
     }
 
     get frequencyGroupName(){
@@ -152,13 +152,7 @@ export default class AmountAndFrequency extends LightningElement {
 
     // Localized currency name for assistive text, e.g. "Euro" (en) / "euro" (fr).
     get _currencyName() {
-        const code = this.currencyCode;
-        if (!code) return '';
-        try {
-            return new Intl.DisplayNames([this._locale], { type: 'currency' }).of(code) || code;
-        } catch {
-            return code;
-        }
+        return localizedCurrencyName(this.currencyCode, this._locale);
     }
 
     // e.g. "Amount in Euro" — read out when the amount input gains focus, since the visual currency symbol is decorative
@@ -315,14 +309,24 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     handleCustomAmountFocus(event) {
-        event.target.value = this._customAmount;
+        // Show the value in the locale format (decimal separator matching blur), never the raw
+        // dot-decimal internal value. In comma-decimal locales "." is the grouping separator, so
+        // writing back "25.5" would make the next keystroke reparse it as 255 (a payment-amount
+        // corruption). Formatting keeps focus and blur symmetric.
+        event.target.value = this._formatForEditing(this._customAmount);
     }
 
     handleCustomAmountBlur(event) {
-        if (this._customAmount === '') return;
-        const num = Number(this._customAmount);
-        if (isNaN(num)) return;
-        event.target.value = new Intl.NumberFormat(this._locale, {
+        event.target.value = this._formatForEditing(this._customAmount);
+    }
+
+    // Render the dot-decimal internal amount in the active locale for display in the input, e.g.
+    // "25.5" → en "25.5" / de "25,5". Returns '' for empty/non-numeric so the field can stay blank.
+    _formatForEditing(plainAmount) {
+        if (plainAmount === '') return '';
+        const num = Number(plainAmount);
+        if (isNaN(num)) return '';
+        return new Intl.NumberFormat(this._locale, {
             minimumFractionDigits: 0,
             maximumFractionDigits: this._currencyDecimals
         }).format(num);
@@ -488,6 +492,19 @@ function localeNumberSeparators(locale) {
 export function toPlainNumberString(raw, locale) {
     const { group, decimal } = localeNumberSeparators(locale);
     let s = String(raw ?? '');
+
+    // In comma-decimal locales (de/nl) the group separator is "." and the decimal is ",". A user
+    // typing "25.50" means twenty-five-fifty, not 2550 — but that "." only reads as grouping when it
+    // precedes exactly 3 digits ("1.234"). The ambiguous case is real: handleCustomAmountFocus writes
+    // back the dot-decimal internal value ("25.5"), so the field can carry a "." that is actually a
+    // decimal point. Reclassify a lone "." with 1–2 trailing digits (and no locale decimal char
+    // present) as the decimal separator instead of dropping it as grouping.
+    if (group === '.' && decimal !== '.' && s.indexOf(decimal) === -1) {
+        if (/^\d+\.\d{1,2}$/.test(s)) {
+            s = s.split('.').join(decimal);
+        }
+    }
+
     if (group) s = s.split(group).join('');
     if (decimal && decimal !== '.') s = s.split(decimal).join('.');
     s = s.replace(/[^0-9.]/g, '');

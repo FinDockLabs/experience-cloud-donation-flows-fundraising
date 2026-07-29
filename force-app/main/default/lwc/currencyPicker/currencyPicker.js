@@ -1,11 +1,12 @@
 import { api, track, LightningElement } from 'lwc';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
-import LOCALE from '@salesforce/i18n/locale';
 import USER_CURRENCY from '@salesforce/i18n/currency';
 import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getActiveCurrencies';
+import { currencyLocale, normalizeCurrency, dedupe, localizedCurrencyName } from 'c/currencyUtils';
 import { labels } from './currencyPickerLabels';
 
-const ISO_CODE = /^[A-Z]{3}$/;
+// The runtime picker logs misconfigured allow-list entries; bind the flag once for readability.
+const normalize = (code) => normalizeCurrency(code, true);
 
 export default class CurrencyPicker extends LightningElement {
     @api allowedCurrencies = '';
@@ -32,7 +33,7 @@ export default class CurrencyPicker extends LightningElement {
 
     get options() {
         return this._currencies.map((code) => ({
-            label: getLocalizedCurrencyLabel(code, this._locale),
+            label: localizedCurrencyName(code, this._locale, true),
             value: code
         }));
     }
@@ -42,12 +43,12 @@ export default class CurrencyPicker extends LightningElement {
     }
 
     get selectedCurrencyAssistiveText() {
-        const label = getLocalizedCurrencyLabel(this._value, this._locale);
+        const label = localizedCurrencyName(this._value, this._locale, true);
         return `${this.labels.ec_label_currency}: ${label}`;
     }
 
     get _locale() {
-        return LOCALE ? LOCALE.replace(/_/g, '-') : 'en-US';
+        return currencyLocale();
     }
 
     connectedCallback() {
@@ -100,29 +101,5 @@ export default class CurrencyPicker extends LightningElement {
     handleChange(event) {
         this._value = event.detail.value;
         this._emit();
-    }
-}
-
-function normalize(code) {
-    const upper = (code || '').toString().trim().toUpperCase();
-    return ISO_CODE.test(upper) ? upper : '';
-}
-
-function dedupe(list) {
-    return [...new Set(list)];
-}
-
-/**
- * Returns localized currency display string according to FinTech i18n standards.
- * E.g., fr-FR: "EUR - euro", en-US: "EUR - Euro"
- */
-function getLocalizedCurrencyLabel(code, locale) {
-    if (!code) return '';
-    try {
-        const displayNames = new Intl.DisplayNames([locale], { type: 'currency' });
-        const name = displayNames.of(code);
-        return name && name.toLowerCase() !== code.toLowerCase() ? `${code} - ${name}` : code;
-    } catch {
-        return code;
     }
 }

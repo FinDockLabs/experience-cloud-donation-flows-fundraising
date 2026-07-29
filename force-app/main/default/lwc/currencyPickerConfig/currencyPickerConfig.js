@@ -1,7 +1,7 @@
 import { api, track, LightningElement } from 'lwc';
 import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getActiveCurrencies';
+import { ISO_CODE, normalizeCurrency, dedupe } from 'c/currencyUtils';
 
-const ISO_CODE = /^[A-Z]{3}$/;
 const FLOW_VAR_OPTION = 'USE_FLOW_VARIABLE';
 
 export default class currencyPickerConfig extends LightningElement {
@@ -45,7 +45,7 @@ export default class currencyPickerConfig extends LightningElement {
     get allowedValue() {
         return (this._get('allowedCurrencies') || '')
             .split(',')
-            .map((c) => c.trim().toUpperCase())
+            .map((c) => normalizeCurrency(c))
             .filter(Boolean);
     }
 
@@ -113,6 +113,15 @@ export default class currencyPickerConfig extends LightningElement {
             this._defaultCurrencyError = 'Select a default currency source.';
         } else if (this.comboboxValue === FLOW_VAR_OPTION && !this._defaultCurrencyValue) {
             this._defaultCurrencyError = 'Select the Flow variable that provides the default currency.';
+        } else if (
+            this.comboboxValue === FLOW_VAR_OPTION &&
+            this._defaultCurrencyValueType === 'String' &&
+            !ISO_CODE.test(this._defaultCurrencyValue)
+        ) {
+            // A literal String typed into the variable input (not a {!reference}) must be a valid ISO
+            // 4217 code — otherwise the runtime picker silently drops it and the default is lost. A
+            // real Flow variable (Reference/Formula) is resolved at runtime, so it can't be checked here.
+            this._defaultCurrencyError = `"${this._defaultCurrencyValue}" is not a valid ISO 4217 currency code (e.g. EUR, USD).`;
         }
 
         return this._defaultCurrencyError
@@ -123,7 +132,7 @@ export default class currencyPickerConfig extends LightningElement {
     connectedCallback() {
         getActiveCurrencies()
             .then((currencies) => {
-                this._orgCurrencies = (currencies || []).map(normalize).filter(Boolean);
+                this._orgCurrencies = (currencies || []).map((c) => normalizeCurrency(c)).filter(Boolean);
                 this._prefillSingleCurrency();
             })
             .catch(() => {
@@ -237,13 +246,4 @@ export default class currencyPickerConfig extends LightningElement {
         this._defaultCurrencyError = '';
         this._dispatch('defaultCurrency', val, type);
     }
-}
-
-function normalize(code) {
-    const upper = (code || '').toString().trim().toUpperCase();
-    return ISO_CODE.test(upper) ? upper : '';
-}
-
-function dedupe(list) {
-    return [...new Set(list)];
 }

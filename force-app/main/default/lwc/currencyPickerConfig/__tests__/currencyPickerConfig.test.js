@@ -150,6 +150,27 @@ describe('c-currency-picker-cpe', () => {
             expect(element.validate()).toEqual([]);
         });
 
+        it('errors when a literal String default is not a valid ISO code', () => {
+            // A non-ISO literal (e.g. "euro", "$") would be silently dropped by the runtime picker.
+            const element = mount([
+                { name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' },
+                { name: 'defaultCurrency', value: 'euro', valueDataType: 'String' }
+            ]);
+            const errors = element.validate();
+            expect(errors).toHaveLength(1);
+            expect(errors[0].key).toBe('defaultCurrency');
+            expect(errors[0].errorString).toMatch(/ISO 4217/);
+        });
+
+        it('does not ISO-check a real Flow-variable reference (resolved at runtime)', () => {
+            // A Reference/Formula default can't be validated here; only literal Strings are checked.
+            const element = mount([
+                { name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' },
+                { name: 'defaultCurrency', value: 'myCurrencyVar', valueDataType: 'Reference' }
+            ]);
+            expect(element.validate()).toEqual([]);
+        });
+
         it('mirrors the error message inline, then clears it once a default is picked', async () => {
             const element = mount([{ name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' }]);
             element.validate();
