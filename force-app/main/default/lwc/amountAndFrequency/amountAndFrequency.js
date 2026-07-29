@@ -73,6 +73,8 @@ export default class AmountAndFrequency extends LightningElement {
         if (value) this._frequency = value;
     }
 
+    // Numeric view of the active amount — used only for boolean/range checks, never for the emitted
+    // value (Number would corrupt digits beyond Number.MAX_SAFE_INTEGER).
     get _amount() {
         if (this._customAmount !== '') {
             const n = Number(this._customAmount);
@@ -81,18 +83,26 @@ export default class AmountAndFrequency extends LightningElement {
         return this._selectedPreset;
     }
 
+    // Exact string view of the active amount for the emitted output. A custom amount is passed through
+    // verbatim (no Number round-trip) so high-precision values reach the payment unchanged; a preset
+    // is a plain number and stringifies safely.
+    get _amountString() {
+        if (this._customAmount !== '') {
+            return Number.isNaN(Number(this._customAmount)) ? null : this._customAmount;
+        }
+        return this._selectedPreset !== null ? String(this._selectedPreset) : null;
+    }
+
     @api
     get amountOneTime() {
         if (this._frequency !== 'oneTime') return null;
-        const amt = this._amount;
-        return amt !== null ? String(amt) : null;
+        return this._amountString;
     }
 
     @api
     get amountRecurring() {
         if (this._frequency !== 'recurring') return null;
-        const amt = this._amount;
-        return amt !== null ? String(amt) : null;
+        return this._amountString;
     }
 
     @api
@@ -264,6 +274,10 @@ export default class AmountAndFrequency extends LightningElement {
         this._restoreState();
         this._applyQueryParams();
 
+        if (this._customAmount !== '') {
+            this._customAmount = this._trimToCurrencyDecimals(this._customAmount);
+        }
+
         // If a state was restored from sessionStorage, immediately evaluate
         // validation to prevent layout shifts or flashing of error styles.
         if (this._customAmount !== '') {
@@ -293,19 +307,23 @@ export default class AmountAndFrequency extends LightningElement {
     handleCustomAmountInput(event) {
         // Accept locale-formatted input: strip the locale grouping separator and normalise the
         // decimal separator to "." (e.g. fr "25,50" and de "1.234,56" both → "1234.56"/"25.50").
-        let val = toPlainNumberString(event.target.value, this._locale);
-        const decimals = this._currencyDecimals;
-        const dotIdx = val.indexOf('.');
-        if (decimals === 0 && dotIdx !== -1) {
-            val = val.substring(0, dotIdx);
-        } else if (decimals > 0 && dotIdx !== -1 && val.length - dotIdx - 1 > decimals) {
-            val = val.substring(0, dotIdx + decimals + 1);
-        }
+        const val = this._trimToCurrencyDecimals(toPlainNumberString(event.target.value, this._locale));
         event.target.value = val;
         this._customAmount   = val;
         this._selectedPreset = val !== '' ? null : this._selectedPreset;
         this._validateAmount(Number(val));
         this._dispatchChange();
+    }
+
+    // Drop any decimals the currency doesn't allow. String-based (no Number) so high-precision
+    // integer amounts survive; only the fractional tail past the currency's precision is cut.
+    _trimToCurrencyDecimals(plainVal) {
+        const decimals = this._currencyDecimals;
+        const dotIdx = plainVal.indexOf('.');
+        if (dotIdx === -1) return plainVal;
+        if (decimals === 0) return plainVal.substring(0, dotIdx);
+        if (plainVal.length - dotIdx - 1 > decimals) return plainVal.substring(0, dotIdx + decimals + 1);
+        return plainVal;
     }
 
     handleCustomAmountFocus(event) {
@@ -321,15 +339,19 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     // Render the dot-decimal internal amount in the active locale for display in the input, e.g.
-    // "25.5" → en "25.5" / de "25,5". Returns '' for empty/non-numeric so the field can stay blank.
+    // "25.5" → en "25.5" / de "25,5"
     _formatForEditing(plainAmount) {
-        if (plainAmount === '') return '';
-        const num = Number(plainAmount);
-        if (isNaN(num)) return '';
-        return new Intl.NumberFormat(this._locale, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: this._currencyDecimals
-        }).format(num);
+        const s = String(plainAmount ?? '');
+        if (s === '' || !/^\d*\.?\d*$/.test(s) || s === '.') return '';
+
+        const { group, decimal } = localeNumberSeparators(this._locale);
+        const dot = s.indexOf('.');
+        const intPart = dot === -1 ? s : s.slice(0, dot);
+        const fracPart = dot === -1 ? '' : s.slice(dot + 1);
+
+        // Group the integer part in threes from the right using the locale's grouping separator.
+        const grouped = (intPart || '0').replace(/\B(?=(\d{3})+(?!\d))/g, group || '');
+        return fracPart ? `${grouped}${decimal}${fracPart}` : grouped;
     }
 
     _parseAmounts(raw) {
