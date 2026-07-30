@@ -22,7 +22,6 @@
             <property name="currencyCode" type="String" role="inputOnly" label="Currency Code (ISO)" description="ISO 4217 code (e.g. EUR) or a flow variable providing the active currency at runtime (e.g. {!currencyPicker.value})."/>
             <property name="defaultFrequency" type="String" role="inputOnly" label="Default frequency" description="Frequency pre-selected when the component loads, e.g. oneTime or recurring." default="oneTime"/>
 
-            <property name="recurringFrequency" type="String" role="outputOnly" label="Recurring Frequency (FinDock)" description="Value written to the recurring record's Frequency field, e.g. Monthly or Weekly. Must match your FinDock Frequency picklist."/>
             <property name="frequency"        type="String"  role="outputOnly" label="Frequency" description="API value of the selected frequency (matches freq1Value or freq2Value)."/>
             <property name="amountOneTime"    type="String" role="outputOnly" label="Amount — one-time" description="Amount when frequency is one-time; null otherwise."/>
             <property name="amountRecurring"  type="String" role="outputOnly" label="Amount — recurring" description="Amount when frequency is recurring; null otherwise."/>

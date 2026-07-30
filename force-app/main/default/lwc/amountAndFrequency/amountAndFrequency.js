@@ -32,9 +32,6 @@ export default class AmountAndFrequency extends LightningElement {
     @api maxAmount       = 0;
     @api defaultFrequency = '';
 
-    // Value written to the recurring record's Frequency field (e.g. Monthly, Weekly).
-    @api recurringFrequency = 'Monthly';
-
     @api
     get currencyCode() {
         return this._currencyCode;
@@ -412,8 +409,6 @@ export default class AmountAndFrequency extends LightningElement {
         this.dispatchEvent(new FlowAttributeChangeEvent('amountOneTime',    detail.amountOneTime));
         this.dispatchEvent(new FlowAttributeChangeEvent('amountRecurring',  detail.amountRecurring));
         this.dispatchEvent(new FlowAttributeChangeEvent('isAmountSelected', detail.isAmountSelected));
-        // Echo the configured recurring frequency back so the Flow can reference it (e.g. in payButton's pixConfig).
-        this.dispatchEvent(new FlowAttributeChangeEvent('recurringFrequency', this.recurringFrequency));
     }
 
     _storageKey() {
