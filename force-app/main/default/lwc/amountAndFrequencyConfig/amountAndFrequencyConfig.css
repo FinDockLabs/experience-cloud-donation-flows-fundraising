@@ -7,6 +7,53 @@
     --_bg:            var(--slds-g-color-neutral-base-100, var(--lwc-colorBackground,       #ffffff));
 }
 
+.section-content {
+    padding-top: var(--slds-g-spacing-2, var(--lwc-varSpacingVerticalXSmall, 0.5rem));
+}
+
+.section-hint {
+    margin-bottom: var(--slds-g-spacing-3, var(--lwc-varSpacingVerticalSmall, 0.75rem));
+    font-size: var(--slds-g-font-scale-neg-1, 0.75rem);
+    color: var(--_text-weak);
+}
+
+.section-divider {
+    margin: var(--slds-g-spacing-2, var(--lwc-varSpacingVerticalXSmall, 0.5rem)) 0;
+}
+
+.frequency-option {
+    margin-top: var(--slds-g-spacing-2, var(--lwc-varSpacingVerticalXSmall, 0.5rem));
+}
+
+.default-frequency {
+    margin-top: var(--slds-g-spacing-3, var(--lwc-varSpacingVerticalSmall, 0.75rem));
+}
+
+.preset-group-label {
+    margin-bottom: var(--slds-g-spacing-2, var(--lwc-varSpacingVerticalXSmall, 0.5rem));
+    font-size: var(--slds-g-font-scale-neg-1, 0.75rem);
+    color: var(--_text-weak);
+}
+
+.preset-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--slds-g-spacing-2, var(--lwc-varSpacingVerticalXSmall, 0.5rem));
+}
+
+.preset-grid__item {
+    flex: 0 0 calc((100% - 2 * var(--slds-g-spacing-2, 0.5rem)) / 3);
+}
+
+.min-max-grid {
+    display: flex;
+    gap: var(--slds-g-spacing-3, var(--lwc-varSpacingVerticalSmall, 0.75rem));
+}
+
+.min-max-grid__item {
+    flex: 1 1 0;
+}
+
 /* Compact currency input: symbol + number inside a single border */
 .amount-input-group {
     display: flex;

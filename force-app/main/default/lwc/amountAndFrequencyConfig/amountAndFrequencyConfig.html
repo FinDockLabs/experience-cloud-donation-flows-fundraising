@@ -4,8 +4,8 @@
         <h3 class="slds-section__title">
             <span class="slds-truncate" title="Frequency">Frequency</span>
         </h3>
-        <div class="slds-section__content slds-var-p-top_x-small">
-            <p class="slds-text-body_small slds-text-color_weak slds-var-m-bottom_small">
+        <div class="section-content">
+            <p class="section-hint">
                 Choose the available payment frequencies. At least one is required.
             </p>
 
@@ -21,7 +21,7 @@
                 </div>
             </div>
 
-            <div class="slds-form-element slds-var-m-top_x-small">
+            <div class="slds-form-element frequency-option">
                 <div class="slds-form-element__control">
                     <label class="slds-checkbox_toggle slds-grid slds-grid_vertical-align-center">
                         <input type="checkbox" checked={showMonthly} onchange={handleShowMonthlyChange}/>
@@ -38,7 +38,7 @@
             </template>
 
             <template lwc:if={showDefaultFrequency}>
-                <div class="slds-var-m-top_small">
+                <div class="default-frequency">
                     <lightning-combobox
                             label="Default frequency"
                             value={defaultFrequency}
@@ -50,22 +50,22 @@
         </div>
     </div>
 
-    <hr class="slds-var-m-vertical_x-small"/>
+    <hr class="section-divider"/>
 
     <!-- ── Preset Amounts ──────────────────────────────────────────────────── -->
     <div class="slds-section slds-is-open">
         <h3 class="slds-section__title">
             <span class="slds-truncate" title="Preset amounts">Preset amounts</span>
         </h3>
-        <div class="slds-section__content slds-var-p-top_x-small">
+        <div class="section-content">
 
             <template lwc:if={showOneTime}>
                 <template lwc:if={showBothFrequencies}>
-                    <p class="slds-text-body_small slds-text-color_weak slds-var-m-bottom_x-small">One-time</p>
+                    <p class="preset-group-label">One-time</p>
                 </template>
-                <div class="slds-grid slds-wrap slds-gutters_x-small">
+                <div class="preset-grid">
                     <template for:each={presetsOneTime} for:item="preset">
-                        <div key={preset.key} class="slds-col slds-size_1-of-3 slds-var-m-bottom_x-small">
+                        <div key={preset.key} class="preset-grid__item">
                             <div class="amount-input-group">
                                 <span class="amount-symbol">{presetCurrencySymbol}</span>
                                 <input
@@ -86,11 +86,11 @@
 
             <template lwc:if={showMonthly}>
                 <template lwc:if={showBothFrequencies}>
-                    <p class="slds-text-body_small slds-text-color_weak slds-var-m-bottom_x-small">Monthly</p>
+                    <p class="preset-group-label">Monthly</p>
                 </template>
-                <div class="slds-grid slds-wrap slds-gutters_x-small">
+                <div class="preset-grid">
                     <template for:each={presetsRecurring} for:item="preset">
-                        <div key={preset.key} class="slds-col slds-size_1-of-3 slds-var-m-bottom_x-small">
+                        <div key={preset.key} class="preset-grid__item">
                             <div class="amount-input-group">
                                 <span class="amount-symbol">{presetCurrencySymbol}</span>
                                 <input
@@ -112,33 +112,16 @@
         </div>
     </div>
 
-    <hr class="slds-var-m-vertical_x-small"/>
-
-    <!-- ── Currency ──────────────────────────────────────────────────────── -->
-    <cpm-flow-field-set label="Currency" description="Enter an ISO 4217 code (e.g. EUR) or select a flow variable that provides the currency at runtime.">
-        <cpm-flow-variable-input
-                name="defaultCurrency"
-                label="Currency"
-                variant="label-hidden"
-                builder-context-filter-type="String"
-                value={defaultCurrencyValue}
-                value-type={defaultCurrencyValueType}
-                builder-context={builderContext}
-                automatic-output-variables={automaticOutputVariables}
-                onvaluechange={handleCurrencyChange}>
-        </cpm-flow-variable-input>
-    </cpm-flow-field-set>
-
-    <hr class="slds-var-m-vertical_x-small"/>
+    <hr class="section-divider"/>
 
     <!-- ── Other Amount ────────────────────────────────────────────────────── -->
     <div class="slds-section slds-is-open">
         <h3 class="slds-section__title">
             <span class="slds-truncate" title="Other amount">Other amount</span>
         </h3>
-        <div class="slds-section__content slds-var-p-top_x-small">
-            <div class="slds-grid slds-gutters_small">
-                <div class="slds-col slds-size_1-of-2">
+        <div class="section-content">
+            <div class="min-max-grid">
+                <div class="min-max-grid__item">
                     <div class="slds-form-element">
                         <label class="slds-form-element__label" for="min-amount-input">Minimum</label>
                         <div class="amount-input-group">
@@ -156,7 +139,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="slds-col slds-size_1-of-2">
+                <div class="min-max-grid__item">
                     <div class="slds-form-element">
                         <label class="slds-form-element__label" for="max-amount-input">Maximum</label>
                         <div class="amount-input-group">
