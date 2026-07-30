@@ -114,6 +114,26 @@
 
     <hr class="section-divider"/>
 
+    <!-- ── Currency ──────────────────────────────────────────────────────── -->
+    <cpm-flow-field-set label="Currency" description="Enter an ISO 4217 code (e.g. EUR) or select a flow variable that provides the currency at runtime (e.g. the Currency Picker output). Leave blank to use the org's default currency.">
+        <cpm-flow-variable-input
+                name="currencyCode"
+                label="Currency"
+                variant="label-hidden"
+                builder-context-filter-type="String"
+                value={currencyValue}
+                value-type={currencyValueType}
+                builder-context={builderContext}
+                automatic-output-variables={automaticOutputVariables}
+                onvaluechange={handleCurrencyChange}>
+        </cpm-flow-variable-input>
+        <template lwc:if={currencyError}>
+            <p class="form-error" role="alert">{currencyError}</p>
+        </template>
+    </cpm-flow-field-set>
+
+    <hr class="section-divider"/>
+
     <!-- ── Other Amount ────────────────────────────────────────────────────── -->
     <div class="slds-section slds-is-open">
         <h3 class="slds-section__title">
