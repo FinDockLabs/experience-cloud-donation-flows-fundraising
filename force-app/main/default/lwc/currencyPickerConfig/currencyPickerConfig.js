@@ -1,10 +1,21 @@
-import { api, track, LightningElement } from 'lwc';
+import { api, LightningElement } from 'lwc';
 import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getActiveCurrencies';
-import { ISO_CODE, normalizeCurrency, dedupe } from 'c/currencyUtils';
+import { ISO_CODE, dedupe, normalizeCurrency } from 'c/currencyUtils';
 
 const FLOW_VAR_OPTION = 'USE_FLOW_VARIABLE';
+const LABELS = {
+    defaultNotOffered: (code) =>
+        `Default currency "${code}" is not active or is not included in the offered currencies.`,
+    inactiveCurrencies: (codes) =>
+        `These offered currencies are not active in your org: ${codes}.`,
+    invalidIsoCode: (value) =>
+        `"${value}" is not a valid ISO 4217 currency code (for example, EUR or USD).`,
+    selectDefault: 'Select a default currency source.',
+    selectVariable: 'Select the Flow variable that provides the default currency.',
+    useFlowVariable: 'Use Flow variable...'
+};
 
-export default class currencyPickerConfig extends LightningElement {
+export default class CurrencyPickerConfig extends LightningElement {
     @api builderContext;
     @api genericTypeMappings;
     @api automaticOutputVariables;
@@ -14,43 +25,47 @@ export default class currencyPickerConfig extends LightningElement {
         return this._inputVariables;
     }
     set inputVariables(value) {
-        this._inputVariables = value || [];
-        if (!this._hydrated && this._inputVariables.length > 0) {
+        this._inputVariables = Array.isArray(value) ? value : [];
+        if (!this._hydrated) {
             this._hydrated = true;
             this._hydrate();
         }
     }
 
-    @track _orgCurrencies = [];
-    @track _currenciesLoaded = false;
-    @track showVariableInput = false;
-    @track comboboxValue = '';
-    @track _defaultCurrencyValue = '';
-    @track _defaultCurrencyValueType = 'String';
-    @track _defaultCurrencyError = '';
-
-    _inputVariables = [];
+    showVariableInput = false;
+    comboboxValue = '';
+    _allowedCurrenciesError = '';
+    _allowedCurrenciesValue = [];
+    _currenciesLoadFailed = false;
+    _currenciesLoaded = false;
+    _defaultCurrencyError = '';
+    _defaultCurrencyValue = '';
+    _defaultCurrencyValueType = 'String';
     _hydrated = false;
+    _inactiveConfiguredCurrencies = [];
+    _inputVariables = [];
+    _orgCurrencies = [];
 
-    // ISO code only across the editor: long localized names (e.g. "USD - Amerikaanse dollar") get
-    // truncated in the narrow Flow Builder panel. Codes are compact and unambiguous for admins; the
-    // full localized name is shown to payers by the runtime currencyPicker.
     get currencyOptions() {
-        return dedupe([...this._orgCurrencies, ...this.allowedValue]).map((code) => ({
+        const currencies =
+            this._currenciesLoaded && !this._currenciesLoadFailed
+                ? this._orgCurrencies
+                : dedupe([...this._orgCurrencies, ...this.allowedValue]);
+
+        return currencies.map((code) => ({
             label: code,
             value: code
         }));
     }
 
     get allowedValue() {
-        return (this._get('allowedCurrencies') || '')
-            .split(',')
-            .map((c) => normalizeCurrency(c))
-            .filter(Boolean);
+        return this._allowedCurrenciesValue;
     }
 
-    // When no allow-list is configured, the payer picks from all currencies active in the org, so
-    // the default must be selectable from that same set.
+    get allowedCurrenciesError() {
+        return this._allowedCurrenciesError;
+    }
+
     get defaultCandidates() {
         return this.allowedValue.length ? this.allowedValue : this._orgCurrencies;
     }
@@ -62,7 +77,7 @@ export default class currencyPickerConfig extends LightningElement {
         }));
 
         options.unshift({
-            label: 'Use Flow Variable...',
+            label: LABELS.useFlowVariable,
             value: FLOW_VAR_OPTION
         });
 
@@ -77,17 +92,22 @@ export default class currencyPickerConfig extends LightningElement {
         return this._defaultCurrencyValueType;
     }
 
-    // Only worth choosing an allow-list when the org has more than one currency to choose from.
-    // A pre-existing allow-list also implies a multi-currency org, so keep the control visible even
-    // before the org currencies load (or if the Apex call fails).
     get showAllowed() {
-        return this._orgCurrencies.length > 1 || this.allowedValue.length > 0;
+        if (!this._currenciesLoaded) {
+            return false;
+        }
+        if (this._currenciesLoadFailed) {
+            return this.allowedValue.length > 0;
+        }
+        return this._orgCurrencies.length > 1 || this._inactiveConfiguredCurrencies.length > 0;
     }
 
-    // The single-currency notice is only trustworthy once the org currencies have loaded — until
-    // then we can't tell a single-currency org from a not-yet-loaded multi-currency one.
     get showSingleCurrencyNotice() {
-        return this._currenciesLoaded && !this.showAllowed;
+        return (
+            this._currenciesLoaded &&
+            !this._currenciesLoadFailed &&
+            this._orgCurrencies.length === 1
+        );
     }
 
     get showDefaultSelector() {
@@ -98,95 +118,172 @@ export default class currencyPickerConfig extends LightningElement {
         return this._defaultCurrencyError;
     }
 
-    // Called by the Flow Builder when the admin tries to save/activate the screen. Returning a
-    // non-empty array blocks activation; the builder then shows a generic "You have N errors" banner
-    // without the message text, so we also mirror each error inline next to its field. The allow-list
-    // is optional (blank = all active currencies), but the default currency is mandatory: either a
-    // fixed ISO code or a Flow variable that supplies it.
     @api
     validate() {
-        this._defaultCurrencyError = '';
-        if (this.showSingleCurrencyNotice) {
-            return [];
-        }
-        if (!this.comboboxValue) {
-            this._defaultCurrencyError = 'Select a default currency source.';
-        } else if (this.comboboxValue === FLOW_VAR_OPTION && !this._defaultCurrencyValue) {
-            this._defaultCurrencyError = 'Select the Flow variable that provides the default currency.';
-        } else if (
-            this.comboboxValue === FLOW_VAR_OPTION &&
-            this._defaultCurrencyValueType === 'String' &&
-            !ISO_CODE.test(this._defaultCurrencyValue)
-        ) {
-            // A literal String typed into the variable input (not a {!reference}) must be a valid ISO
-            // 4217 code — otherwise the runtime picker silently drops it and the default is lost. A
-            // real Flow variable (Reference/Formula) is resolved at runtime, so it can't be checked here.
-            this._defaultCurrencyError = `"${this._defaultCurrencyValue}" is not a valid ISO 4217 currency code (e.g. EUR, USD).`;
-        }
+        this._allowedCurrenciesError = this._getAllowedCurrenciesError();
+        this._defaultCurrencyError = this._getDefaultCurrencyError();
 
-        return this._defaultCurrencyError
-            ? [{ key: 'defaultCurrency', errorString: this._defaultCurrencyError }]
-            : [];
+        const errors = [];
+        if (this._allowedCurrenciesError) {
+            errors.push({
+                key: 'allowedCurrencies',
+                errorString: this._allowedCurrenciesError
+            });
+        }
+        if (this._defaultCurrencyError) {
+            errors.push({
+                key: 'defaultCurrency',
+                errorString: this._defaultCurrencyError
+            });
+        }
+        return errors;
     }
 
     connectedCallback() {
+        this._loadActiveCurrencies();
+    }
+
+    _loadActiveCurrencies() {
         getActiveCurrencies()
             .then((currencies) => {
-                this._orgCurrencies = (currencies || []).map((c) => normalizeCurrency(c)).filter(Boolean);
-                this._prefillSingleCurrency();
+                this._orgCurrencies = dedupe(
+                    (currencies || []).map((code) => normalizeCurrency(code)).filter(Boolean)
+                );
+                this._reconcileAllowedCurrencies();
+                this._applySingleCurrency();
             })
             .catch(() => {
-                /* On failure, leave options as currently selected values */
+                this._currenciesLoadFailed = true;
             })
             .finally(() => {
                 this._currenciesLoaded = true;
             });
     }
 
-    // Single-currency org: pre-select its one currency as the default so the admin doesn't have to
-    // pick from a list of one. They can still switch to a Flow variable if they need to.
-    _prefillSingleCurrency() {
-        if (this._orgCurrencies.length === 1 && !this.comboboxValue) {
-            const singleCurrency = this._orgCurrencies[0];
-            this.comboboxValue = singleCurrency;
-            this._defaultCurrencyValue = singleCurrency;
-            this._defaultCurrencyValueType = 'String';
-            this._dispatch('defaultCurrency', singleCurrency, 'String');
+    _getDefaultCurrencyError() {
+        if (this.showSingleCurrencyNotice) {
+            return '';
+        }
+        if (!this.comboboxValue) {
+            return LABELS.selectDefault;
+        }
+        if (this.comboboxValue === FLOW_VAR_OPTION && !this._defaultCurrencyValue) {
+            return LABELS.selectVariable;
+        }
+        if (
+            this.comboboxValue === FLOW_VAR_OPTION &&
+            this._defaultCurrencyValueType === 'String' &&
+            !ISO_CODE.test(this._defaultCurrencyValue)
+        ) {
+            return LABELS.invalidIsoCode(this._defaultCurrencyValue);
+        }
+        if (
+            this.comboboxValue !== FLOW_VAR_OPTION &&
+            !ISO_CODE.test(this.comboboxValue)
+        ) {
+            return LABELS.invalidIsoCode(this.comboboxValue);
+        }
+        if (
+            this.comboboxValue !== FLOW_VAR_OPTION &&
+            this.defaultCandidates.length &&
+            !this.defaultCandidates.includes(this.comboboxValue)
+        ) {
+            return LABELS.defaultNotOffered(this.comboboxValue);
+        }
+        return '';
+    }
+
+    _getAllowedCurrenciesError() {
+        if (!this._currenciesLoaded || this._currenciesLoadFailed) {
+            return '';
+        }
+
+        return this._inactiveConfiguredCurrencies.length
+            ? LABELS.inactiveCurrencies(this._inactiveConfiguredCurrencies.join(', '))
+            : '';
+    }
+
+    _reconcileAllowedCurrencies() {
+        if (!this._allowedCurrenciesValue.length) {
+            this._inactiveConfiguredCurrencies = [];
+            return;
+        }
+
+        const configuredCurrencies = this._allowedCurrenciesValue;
+        const activeConfiguredCurrencies = configuredCurrencies.filter((code) =>
+            this._orgCurrencies.includes(code)
+        );
+        const inactiveConfiguredCurrencies = configuredCurrencies.filter(
+            (code) => !this._orgCurrencies.includes(code)
+        );
+
+        this._allowedCurrenciesValue = activeConfiguredCurrencies;
+
+        if (this._orgCurrencies.length === 1) {
+            this._inactiveConfiguredCurrencies = [];
+            this._allowedCurrenciesValue = [];
+            this._dispatch('allowedCurrencies', '');
+        } else if (activeConfiguredCurrencies.length) {
+            this._inactiveConfiguredCurrencies = [];
+            if (inactiveConfiguredCurrencies.length) {
+                this._dispatch('allowedCurrencies', activeConfiguredCurrencies.join(','));
+            }
+        } else {
+            this._inactiveConfiguredCurrencies = inactiveConfiguredCurrencies;
+        }
+    }
+
+    _applySingleCurrency() {
+        if (this._orgCurrencies.length !== 1) {
+            return;
+        }
+
+        const singleCurrency = this._orgCurrencies[0];
+        const shouldUpdateDefault =
+            this.comboboxValue !== singleCurrency ||
+            this._defaultCurrencyValueType !== 'String';
+
+        this.comboboxValue = singleCurrency;
+        this._defaultCurrencyValue = singleCurrency;
+        this._defaultCurrencyValueType = 'String';
+        this.showVariableInput = false;
+
+        if (shouldUpdateDefault) {
+            this._dispatch('defaultCurrency', singleCurrency);
         }
     }
 
     _hydrate() {
-        const currentVar = this._getVariable('defaultCurrency');
-        this._defaultCurrencyValue = currentVar?.value ?? '';
-        this._defaultCurrencyValueType = currentVar?.valueDataType ?? 'String';
+        this._allowedCurrenciesValue = dedupe(
+            (this._get('allowedCurrencies') || '')
+                .split(',')
+                .map((code) => normalizeCurrency(code))
+                .filter(Boolean)
+        );
 
-        const val = this._defaultCurrencyValue;
-        const type = this._defaultCurrencyValueType;
+        const currentVariable = this._getVariable('defaultCurrency');
+        this._defaultCurrencyValue = currentVariable?.value ?? '';
+        this._defaultCurrencyValueType = currentVariable?.valueDataType ?? 'String';
 
-        const isFlowVariable =
-            type === 'Reference' ||
-            type === 'Formula' ||
-            val.startsWith('{!') ||
-            (val && !ISO_CODE.test(val));
+        const value = this._defaultCurrencyValue;
+        const valueType = this._defaultCurrencyValueType;
+        const isFlowVariable = valueType === 'Reference' || valueType === 'Formula';
 
-        if (isFlowVariable && val) {
+        if (isFlowVariable && value) {
             this.comboboxValue = FLOW_VAR_OPTION;
             this.showVariableInput = true;
-        } else if (val) {
-            this.comboboxValue = val;
-            this.showVariableInput = false;
         } else {
-            this.comboboxValue = '';
+            this.comboboxValue = value;
             this.showVariableInput = false;
         }
     }
 
     _get(name) {
-        return this._inputVariables.find((v) => v.name === name)?.value;
+        return this._inputVariables.find((variable) => variable.name === name)?.value;
     }
 
     _getVariable(name) {
-        return this._inputVariables.find((v) => v.name === name);
+        return this._inputVariables.find((variable) => variable.name === name);
     }
 
     _dispatch(name, value, newValueDataType = 'String') {
@@ -201,49 +298,56 @@ export default class currencyPickerConfig extends LightningElement {
     }
 
     handleAllowedChange(event) {
-        const selected = event.detail.value; // Array of ISO codes
-        this._dispatch('allowedCurrencies', selected.join(','));
+        const selectedCurrencies = dedupe(
+            (event.detail.value || []).map((code) => normalizeCurrency(code)).filter(Boolean)
+        );
+        this._allowedCurrenciesValue = selectedCurrencies;
+        this._allowedCurrenciesError = '';
+        this._inactiveConfiguredCurrencies = [];
+        this._dispatch('allowedCurrencies', selectedCurrencies.join(','));
 
-        // A fixed default must stay within the picker's choices. When the allow-list is cleared the
-        // choices fall back to all org currencies, so the default only needs resetting when a
-        // non-empty allow-list no longer contains it. A Flow-variable default is never affected.
         if (
-            selected.length &&
+            selectedCurrencies.length &&
             this.comboboxValue !== FLOW_VAR_OPTION &&
             this.comboboxValue &&
-            !selected.includes(this.comboboxValue)
+            !selectedCurrencies.includes(this.comboboxValue)
         ) {
             this.comboboxValue = '';
             this._defaultCurrencyValue = '';
+            this._defaultCurrencyValueType = 'String';
             this.showVariableInput = false;
             this._dispatch('defaultCurrency', '');
         }
     }
 
     handleComboboxChange(event) {
-        const selectedVal = event.detail.value;
-        this.comboboxValue = selectedVal;
+        const selectedValue = event.detail.value;
+        this.comboboxValue = selectedValue;
         this._defaultCurrencyError = '';
 
-        if (selectedVal === FLOW_VAR_OPTION) {
+        if (selectedValue === FLOW_VAR_OPTION) {
             this.showVariableInput = true;
-            this._dispatch('defaultCurrency', this._defaultCurrencyValue, this._defaultCurrencyValueType);
+            this._dispatch(
+                'defaultCurrency',
+                this._defaultCurrencyValue,
+                this._defaultCurrencyValueType
+            );
         } else {
             this.showVariableInput = false;
-            this._defaultCurrencyValue = selectedVal;
+            this._defaultCurrencyValue = selectedValue;
             this._defaultCurrencyValueType = 'String';
-            this._dispatch('defaultCurrency', selectedVal, 'String');
+            this._dispatch('defaultCurrency', selectedValue);
         }
     }
 
     handleVariableChange(event) {
-        const type = event.detail.newValueDataType ?? 'String';
-        const raw = event.detail.newValue ?? '';
-        const val = type === 'String' ? raw.toUpperCase() : raw;
+        const valueType = event.detail.newValueDataType ?? 'String';
+        const rawValue = event.detail.newValue ?? '';
+        const value = valueType === 'String' ? rawValue.trim().toUpperCase() : rawValue;
 
-        this._defaultCurrencyValue = val;
-        this._defaultCurrencyValueType = type;
+        this._defaultCurrencyValue = value;
+        this._defaultCurrencyValueType = valueType;
         this._defaultCurrencyError = '';
-        this._dispatch('defaultCurrency', val, type);
+        this._dispatch('defaultCurrency', value, valueType);
     }
 }

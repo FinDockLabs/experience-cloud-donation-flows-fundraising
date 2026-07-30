@@ -1,11 +1,9 @@
-import { api, track, LightningElement } from 'lwc';
+import { api, LightningElement } from 'lwc';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
-import USER_CURRENCY from '@salesforce/i18n/currency';
 import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getActiveCurrencies';
-import { currencyLocale, normalizeCurrency, dedupe, localizedCurrencyName } from 'c/currencyUtils';
+import { currencyLocale, dedupe, localizedCurrencyName, normalizeCurrency} from 'c/currencyUtils';
 import { labels } from './currencyPickerLabels';
 
-// The runtime picker logs misconfigured allow-list entries; bind the flag once for readability.
 const normalize = (code) => normalizeCurrency(code, true);
 
 export default class CurrencyPicker extends LightningElement {
@@ -18,20 +16,28 @@ export default class CurrencyPicker extends LightningElement {
     }
     set value(val) {
         const code = normalize(val);
-        if (code && code !== this._value) {
+        const isSelectable = !this._currencies.length || this._currencies.includes(code);
+
+        if (code && isSelectable && code !== this._value) {
             this._value = code;
             this._selected = code;
-            if (this._currencies.length && !this._currencies.includes(code)) {
-                this._currencies = dedupe([...this._currencies, code]);
-            }
         }
     }
 
-    @track _value = '';
-
     labels = labels;
+    _configuredCurrencies = [];
     _currencies = [];
+    _hasConfiguredAllowList = false;
     _selected = '';
+    _value = '';
+
+    @api
+    validate() {
+        return {
+            isValid: Boolean(this._value),
+            errorMessage: this._value ? null : this.labels.ec_error_payment_methods_unavailable
+        };
+    }
 
     get options() {
         return this._currencies.map((code) => ({
@@ -54,43 +60,39 @@ export default class CurrencyPicker extends LightningElement {
     }
 
     connectedCallback() {
-        const explicit = dedupe((this.allowedCurrencies || '').split(',').map(normalize).filter(Boolean));
-        if (explicit.length) {
-            this._applyCurrencies(explicit);
-            this._emit();
-            return;
-        }
-        this._applyCurrencies(this._fallbackSingle());
-        this._autoDetect();
+        this._hasConfiguredAllowList = Boolean((this.allowedCurrencies || '').trim());
+        this._configuredCurrencies = dedupe(
+            (this.allowedCurrencies || '').split(',').map(normalize).filter(Boolean)
+        );
+        this._loadActiveCurrencies();
     }
 
-    _autoDetect() {
+    _loadActiveCurrencies() {
         getActiveCurrencies()
             .then((currencies) => {
-                const codes = dedupe((currencies || []).map(normalize).filter(Boolean));
-                if (codes.length > 1) {
-                    this._applyCurrencies(codes);
-                }
+                const activeCurrencies = dedupe(
+                    (currencies || []).map(normalize).filter(Boolean)
+                );
+                const availableCurrencies = this._hasConfiguredAllowList
+                    ? this._configuredCurrencies.filter((code) =>
+                        activeCurrencies.includes(code)
+                    )
+                    : activeCurrencies;
+
+                this._applyCurrencies(availableCurrencies);
             })
             .catch(() => {
-                /* keep the fallback */
+                this._applyCurrencies([]);
             })
             .finally(() => this._emit());
     }
 
     _applyCurrencies(list) {
-        this._currencies = list.length ? list : this._fallbackSingle();
+        this._currencies = list;
         this._value = this._resolveInitial();
     }
 
-    _fallbackSingle() {
-        const single = normalize(this.defaultCurrency) || normalize(USER_CURRENCY);
-        return single ? [single] : [];
-    }
-
     _resolveInitial() {
-        // Keep an explicit selection (set via the `value` setter before auto-detect resolves)
-        // when it is still valid, so a late currency list never overrides it.
         if (this._selected && this._currencies.includes(this._selected)) {
             return this._selected;
         }
@@ -98,7 +100,7 @@ export default class CurrencyPicker extends LightningElement {
         if (preferred && this._currencies.includes(preferred)) {
             return preferred;
         }
-        return this._currencies[0] || preferred || '';
+        return this._currencies[0] || '';
     }
 
     _emit() {

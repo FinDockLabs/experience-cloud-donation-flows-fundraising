@@ -1,34 +1,26 @@
 .cpe {
     display: flex;
     flex-direction: column;
-    gap: var(--slds-g-spacing-5, 1.5rem);
-    padding: var(--slds-g-spacing-4, 1rem) var(--slds-g-spacing-1, 0.25rem);
+    gap: var(--slds-g-spacing-5);
+    padding: var(--slds-g-spacing-4) var(--slds-g-spacing-1);
 }
 
 .field {
     display: flex;
     flex-direction: column;
-    gap: var(--slds-g-spacing-1, 0.25rem);
+    gap: var(--slds-g-spacing-1);
 }
 
-/* Field heading */
-.field__label {
-    font-size: var(--slds-g-font-scale-1, 0.875rem);
-    font-weight: var(--slds-g-font-weight-7, 700);
-    color: var(--slds-g-color-neutral-base-10, #181818);
-}
-
-/* Description under the heading (replaces the field-level-help tooltip) */
 .field__help {
-    margin: 0 0 var(--slds-g-spacing-2, 0.5rem);
-    font-size: var(--slds-g-font-scale-neg-1, 0.75rem);
-    line-height: 1.25;
-    color: var(--slds-g-color-neutral-base-50, #5c5c5c);
+    margin: 0;
+    font-size: var(--slds-g-font-scale-neg-1);
+    line-height: var(--slds-g-line-height-text);
+    color: var(--slds-g-color-neutral-base-50);
 }
 
 .field__error {
     margin: 0;
-    font-size: var(--slds-g-font-scale-neg-1, 0.75rem);
-    line-height: 1.25;
-    color: var(--slds-g-color-error-1, #ba0517);
+    font-size: var(--slds-g-font-scale-neg-1);
+    line-height: var(--slds-g-line-height-text);
+    color: var(--slds-g-color-error-base-50);
 }

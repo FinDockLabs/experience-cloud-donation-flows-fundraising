@@ -66,14 +66,18 @@ describe('c-currency-picker-cpe', () => {
         expect(element.validate()).toEqual([]);
     });
 
-    it('pre-fills the multi-select from the allowedCurrencies CSV input variable', () => {
+    it('pre-fills the multi-select from active allowedCurrencies input values', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD', 'GBP']);
         const element = mount([{ name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' }]);
+        await flush();
         const dual = element.shadowRoot.querySelector('lightning-dual-listbox');
         expect(dual.value).toEqual(['EUR', 'USD']);
     });
 
-    it('limits the default single-select to the selected available currencies', () => {
+    it('limits the default single-select to the selected available currencies', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD', 'GBP']);
         const element = mount([{ name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' }]);
+        await flush();
         const combo = element.shadowRoot.querySelector('lightning-combobox[data-name="defaultCurrency"]')
             || element.shadowRoot.querySelectorAll('lightning-combobox')[0];
         // The default single-select also offers a leading "Use Flow Variable..." entry; the
@@ -94,11 +98,36 @@ describe('c-currency-picker-cpe', () => {
         expect(changed).toContainEqual({ name: 'allowedCurrencies', newValue: 'EUR,USD', newValueDataType: 'String' });
     });
 
-    it('clears the default when it is removed from the available currencies', () => {
+    it('updates default options immediately when the allow-list changes', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD', 'GBP']);
+        const element = mount([]);
+        await flush();
+        element.shadowRoot.querySelector('lightning-dual-listbox').dispatchEvent(
+            new CustomEvent('change', { detail: { value: ['EUR'] } })
+        );
+        await flush();
+        const currencyValues = element.shadowRoot
+            .querySelector('lightning-combobox')
+            .options.map((option) => option.value)
+            .filter((value) => value !== 'USE_FLOW_VARIABLE');
+        expect(currencyValues).toEqual(['EUR']);
+    });
+
+    it('does not report a single-currency org when loading currencies fails', async () => {
+        getActiveCurrencies.mockRejectedValueOnce(new Error('Unavailable'));
+        const element = mount([]);
+        await flush();
+        expect(element.shadowRoot.querySelector('lightning-combobox')).not.toBeNull();
+        expect(element.shadowRoot.textContent).not.toContain('single active currency');
+    });
+
+    it('clears the default when it is removed from the available currencies', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD']);
         const element = mount([
             { name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' },
             { name: 'defaultCurrency', value: 'USD', valueDataType: 'String' }
         ]);
+        await flush();
         const changed = [];
         element.addEventListener('configuration_editor_input_value_changed', (e) => changed.push(e.detail));
         // Remove USD → only EUR remains; default USD is no longer valid.
@@ -107,6 +136,57 @@ describe('c-currency-picker-cpe', () => {
         );
         expect(changed).toContainEqual({ name: 'allowedCurrencies', newValue: 'EUR', newValueDataType: 'String' });
         expect(changed).toContainEqual({ name: 'defaultCurrency', newValue: '', newValueDataType: 'String' });
+    });
+
+    it('removes stale configured currencies when only one org currency remains active', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR']);
+        const element = mount([
+            { name: 'allowedCurrencies', value: 'EUR,USD,GBP', valueDataType: 'String' },
+            { name: 'defaultCurrency', value: 'USD', valueDataType: 'String' }
+        ]);
+        const changed = [];
+        element.addEventListener('configuration_editor_input_value_changed', (event) =>
+            changed.push(event.detail)
+        );
+
+        await flush();
+
+        expect(element.shadowRoot.querySelector('lightning-dual-listbox')).toBeNull();
+        expect(element.shadowRoot.querySelector('lightning-combobox')).toBeNull();
+        expect(element.shadowRoot.textContent).toContain('single active currency');
+        expect(changed).toContainEqual({
+            name: 'allowedCurrencies',
+            newValue: '',
+            newValueDataType: 'String'
+        });
+        expect(changed).toContainEqual({
+            name: 'defaultCurrency',
+            newValue: 'EUR',
+            newValueDataType: 'String'
+        });
+    });
+
+    it('removes inactive currencies from a partially active allow-list', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD']);
+        const element = mount([
+            { name: 'allowedCurrencies', value: 'EUR,JPY', valueDataType: 'String' },
+            { name: 'defaultCurrency', value: 'EUR', valueDataType: 'String' }
+        ]);
+        const changed = [];
+        element.addEventListener('configuration_editor_input_value_changed', (event) =>
+            changed.push(event.detail)
+        );
+
+        await flush();
+
+        const dualListbox = element.shadowRoot.querySelector('lightning-dual-listbox');
+        expect(dualListbox.options.map((option) => option.value)).toEqual(['EUR', 'USD']);
+        expect(dualListbox.value).toEqual(['EUR']);
+        expect(changed).toContainEqual({
+            name: 'allowedCurrencies',
+            newValue: 'EUR',
+            newValueDataType: 'String'
+        });
     });
 
     describe('validate()', () => {
@@ -151,15 +231,33 @@ describe('c-currency-picker-cpe', () => {
         });
 
         it('errors when a literal String default is not a valid ISO code', () => {
-            // A non-ISO literal (e.g. "euro", "$") would be silently dropped by the runtime picker.
             const element = mount([
                 { name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' },
                 { name: 'defaultCurrency', value: 'euro', valueDataType: 'String' }
             ]);
+
+            // Invalid String literals remain fixed-value errors; they aren't reclassified as Flow variables.
+            expect(element.shadowRoot.querySelector('cpm-flow-variable-input')).toBeNull();
             const errors = element.validate();
             expect(errors).toHaveLength(1);
             expect(errors[0].key).toBe('defaultCurrency');
             expect(errors[0].errorString).toMatch(/ISO 4217/);
+        });
+
+        it('rejects reference-like text when its declared type is String', () => {
+            const element = mount([
+                { name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' },
+                { name: 'defaultCurrency', value: '{!currencyVar}', valueDataType: 'String' }
+            ]);
+
+            expect(element.shadowRoot.querySelector('cpm-flow-variable-input')).toBeNull();
+            expect(element.validate()).toEqual([
+                {
+                    key: 'defaultCurrency',
+                    errorString:
+                        '"{!currencyVar}" is not a valid ISO 4217 currency code (for example, EUR or USD).'
+                }
+            ]);
         });
 
         it('does not ISO-check a real Flow-variable reference (resolved at runtime)', () => {
@@ -169,6 +267,34 @@ describe('c-currency-picker-cpe', () => {
                 { name: 'defaultCurrency', value: 'myCurrencyVar', valueDataType: 'Reference' }
             ]);
             expect(element.validate()).toEqual([]);
+        });
+
+        it('rejects a fixed default that is not active or offered', async () => {
+            getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD']);
+            const element = mount([
+                { name: 'defaultCurrency', value: 'JPY', valueDataType: 'String' }
+            ]);
+            await flush();
+            expect(element.validate()).toEqual([
+                {
+                    key: 'defaultCurrency',
+                    errorString:
+                        'Default currency "JPY" is not active or is not included in the offered currencies.'
+                }
+            ]);
+        });
+
+        it('rejects an allow-list when none of its currencies are active', async () => {
+            getActiveCurrencies.mockResolvedValueOnce(['EUR', 'USD']);
+            const element = mount([
+                { name: 'allowedCurrencies', value: 'JPY,GBP', valueDataType: 'String' },
+                { name: 'defaultCurrency', value: 'JPY', valueDataType: 'String' }
+            ]);
+            await flush();
+            expect(element.validate()).toContainEqual({
+                key: 'allowedCurrencies',
+                errorString: 'These offered currencies are not active in your org: JPY, GBP.'
+            });
         });
 
         it('mirrors the error message inline, then clears it once a default is picked', async () => {

@@ -2,11 +2,9 @@ import { createElement } from 'lwc';
 import CurrencyPicker from 'c/currencyPicker';
 import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getActiveCurrencies';
 
-// @salesforce/i18n/currency is mocked to 'USD' (jest-mocks/i18n/currency).
-// getActiveCurrencies is mocked to a single-currency org (empty list) by default.
 jest.mock(
     '@salesforce/apex/CurrencyPickerController.getActiveCurrencies',
-    () => ({ default: jest.fn(() => Promise.resolve([])) }),
+    () => ({ default: jest.fn(() => Promise.resolve(['EUR', 'USD', 'GBP'])) }),
     { virtual: true }
 );
 
@@ -14,6 +12,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
 });
 
 // Creates the element, wires a currencychange listener, then appends it so we can capture the
@@ -34,35 +33,33 @@ afterEach(() => {
 });
 
 describe('c-currency-picker', () => {
-    it('renders a combobox with one option per allowed currency', () => {
+    it('renders a combobox with one option per active allowed currency', async () => {
         const { element } = mount({ allowedCurrencies: 'EUR,USD,GBP', defaultCurrency: 'EUR' });
+        await flush();
         const combobox = element.shadowRoot.querySelector('lightning-combobox');
         expect(combobox).not.toBeNull();
         expect(combobox.options.map((o) => o.value)).toEqual(['EUR', 'USD', 'GBP']);
     });
 
-    it('normalizes and de-duplicates the allow-list (case, spaces, repeats)', () => {
+    it('normalizes and de-duplicates the allow-list (case, spaces, repeats)', async () => {
         const { element } = mount({ allowedCurrencies: ' eur , usd ,EUR', defaultCurrency: 'eur' });
+        await flush();
         const combobox = element.shadowRoot.querySelector('lightning-combobox');
         expect(combobox.options.map((o) => o.value)).toEqual(['EUR', 'USD']);
     });
 
-    it('collapses (no combobox) and emits the value when only one currency is allowed', () => {
+    it('collapses and emits the value when only one active currency is allowed', async () => {
         const { element, changes } = mount({ allowedCurrencies: 'EUR' });
+        await flush();
         expect(element.shadowRoot.querySelector('lightning-combobox')).toBeNull();
         expect(element.value).toBe('EUR');
         expect(changes).toEqual(['EUR']);
     });
 
-    it('falls back to a single currency (default, else org/user) when no allow-list is set', () => {
+    it('uses a configured default when it is active', async () => {
         const { element } = mount({ defaultCurrency: 'GBP' });
-        expect(element.shadowRoot.querySelector('lightning-combobox')).toBeNull();
+        await flush();
         expect(element.value).toBe('GBP');
-    });
-
-    it('uses the org/user currency as the single fallback when nothing is configured', () => {
-        const { element } = mount({});
-        expect(element.value).toBe('USD'); // from the i18n/currency mock (before auto-detect resolves)
     });
 
     it('auto-detects the org currencies via Apex when no allow-list is set', async () => {
@@ -75,27 +72,76 @@ describe('c-currency-picker', () => {
         expect(element.value).toBe('EUR'); // first allowed (no fixed default given)
     });
 
-    it('keeps the single fallback when Apex returns one/zero currencies', async () => {
-        getActiveCurrencies.mockResolvedValueOnce([]);
-        const { element } = mount({ defaultCurrency: 'GBP' });
+    it('fails closed when active currencies cannot be loaded', async () => {
+        getActiveCurrencies.mockRejectedValueOnce(new Error('Unavailable'));
+        const { element, changes } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
         await flush();
         expect(element.shadowRoot.querySelector('lightning-combobox')).toBeNull();
-        expect(element.value).toBe('GBP');
+        expect(element.value).toBe('');
+        expect(element.validate().isValid).toBe(false);
+        expect(changes).toEqual(['']);
     });
 
-    it('does not call Apex when an allow-list is provided', () => {
-        mount({ allowedCurrencies: 'EUR,USD' });
-        expect(getActiveCurrencies).not.toHaveBeenCalled();
+    it('uses the active org currency when Apex returns exactly one currency', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR']);
+        const { element, changes } = mount({});
+        await flush();
+        expect(element.shadowRoot.querySelector('lightning-combobox')).toBeNull();
+        expect(element.value).toBe('EUR');
+        expect(changes).toEqual(['EUR']);
+    });
+
+    it('removes configured currencies that are no longer active', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['EUR']);
+        const { element, changes } = mount({
+            allowedCurrencies: 'EUR,USD,GBP',
+            defaultCurrency: 'USD'
+        });
+        await flush();
+        expect(getActiveCurrencies).toHaveBeenCalledTimes(1);
+        expect(element.shadowRoot.querySelector('lightning-combobox')).toBeNull();
+        expect(element.value).toBe('EUR');
+        expect(changes).toEqual(['EUR']);
+    });
+
+    it('fails closed when no configured currency remains active', async () => {
+        getActiveCurrencies.mockResolvedValueOnce(['JPY']);
+        const { element } = mount({
+            allowedCurrencies: 'EUR,USD',
+            defaultCurrency: 'EUR'
+        });
+        await flush();
+        expect(element.value).toBe('');
+        expect(element.validate().isValid).toBe(false);
+    });
+
+    it('does not treat an invalid non-empty allow-list as no restriction', async () => {
+        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const { element } = mount({ allowedCurrencies: 'euro,$' });
+        await flush();
+        expect(element.value).toBe('');
+        expect(element.validate().isValid).toBe(false);
+        expect(consoleError).toHaveBeenCalledTimes(2);
+        consoleError.mockRestore();
     });
 
     describe('default currency', () => {
-        it('uses the configured default when it is one of the allowed currencies', () => {
+        it('uses the configured default when it is active and allowed', async () => {
             const { element } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'USD' });
+            await flush();
             expect(element.value).toBe('USD');
         });
 
-        it('falls back to the first allowed currency when the default is not allowed', () => {
+        it('falls back to the first active allowed currency when the default is not allowed', async () => {
             const { element } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'JPY' });
+            await flush();
+            expect(element.value).toBe('EUR');
+        });
+
+        it('ignores an externally assigned currency outside the active allow-list', async () => {
+            const { element } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
+            await flush();
+            element.value = 'JPY';
             expect(element.value).toBe('EUR');
         });
     });
@@ -109,12 +155,13 @@ describe('c-currency-picker', () => {
         expect(element.value).toBe('EUR');
     });
 
-    it('emits once even when Apex returns a single/zero-currency org', async () => {
+    it('emits once even when Apex returns no active currencies', async () => {
         getActiveCurrencies.mockResolvedValueOnce([]);
-        const { changes } = mount({ defaultCurrency: 'GBP' });
+        const { element, changes } = mount({ defaultCurrency: 'GBP' });
         expect(changes).toEqual([]);
         await flush();
-        expect(changes).toEqual(['GBP']);
+        expect(changes).toEqual(['']);
+        expect(element.validate().isValid).toBe(false);
     });
 
     it('keeps an externally set value when a late auto-detect list still contains it', async () => {
@@ -124,12 +171,19 @@ describe('c-currency-picker', () => {
         expect(element.value).toBe('GBP'); // not overridden by codes[0]
     });
 
-    it('emits currencychange when the payer switches currency', () => {
+    it('emits currencychange when the payer switches currency', async () => {
         const { element, changes } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
+        await flush();
         expect(changes).toEqual(['EUR']); // initial
         const combobox = element.shadowRoot.querySelector('lightning-combobox');
         combobox.dispatchEvent(new CustomEvent('change', { detail: { value: 'USD' } }));
         expect(element.value).toBe('USD');
         expect(changes).toEqual(['EUR', 'USD']);
+    });
+
+    it('reports a valid Flow screen value when a currency is selected', async () => {
+        const { element } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
+        await flush();
+        expect(element.validate()).toEqual({ isValid: true, errorMessage: null });
     });
 });

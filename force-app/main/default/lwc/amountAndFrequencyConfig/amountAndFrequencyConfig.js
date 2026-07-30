@@ -1,5 +1,7 @@
-import { LightningElement, api, track } from 'lwc';
+import { api, LightningElement, track } from 'lwc';
 import CURRENCY from '@salesforce/i18n/currency';
+import getActiveCurrencies from '@salesforce/apex/CurrencyPickerController.getActiveCurrencies';
+import { dedupe, normalizeCurrency } from 'c/currencyUtils';
 
 const PRESET_COUNT = 6;
 
@@ -50,6 +52,7 @@ export default class AmountAndFrequencyConfig extends LightningElement {
     @track _presetsOneTime   = makePresets('', DEFAULT_AMOUNTS_ONE_TIME);
     @track _presetsRecurring = makePresets('', DEFAULT_AMOUNTS_RECURRING);
 
+    _previewCurrency = '';
     _showOneTime = true;
     _showMonthly = true;
     _defaultFrequency = 'oneTime';
@@ -110,17 +113,36 @@ export default class AmountAndFrequencyConfig extends LightningElement {
     }
 
     get presetCurrencySymbol() {
-        // Design-time preview only; the runtime currency comes from the currencyPicker component.
-        return this._getCurrencySymbol(CURRENCY || '');
+        return this._getCurrencySymbol(this._previewCurrency);
     }
 
     get _currencyDecimals() {
-        const code = CURRENCY || '';
+        const code = this._previewCurrency;
         try {
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).resolvedOptions().maximumFractionDigits;
         } catch {
             return 2;
         }
+    }
+
+    connectedCallback() {
+        this._loadActiveCurrencies();
+    }
+
+    _loadActiveCurrencies() {
+        getActiveCurrencies()
+            .then((currencies) => {
+                const activeCurrencies = dedupe(
+                    (currencies || []).map((code) => normalizeCurrency(code)).filter(Boolean)
+                );
+                const preferredCurrency = normalizeCurrency(CURRENCY);
+                this._previewCurrency = activeCurrencies.includes(preferredCurrency)
+                    ? preferredCurrency
+                    : activeCurrencies[0] || '';
+            })
+            .catch(() => {
+                this._previewCurrency = '';
+            });
     }
 
     _sanitizeConfigAmountInput(event) {
