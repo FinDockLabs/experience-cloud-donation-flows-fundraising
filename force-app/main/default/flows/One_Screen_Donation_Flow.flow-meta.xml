@@ -70,12 +70,9 @@
         <allowFinish>true</allowFinish>
         <allowPause>true</allowPause>
         <fields>
-            <name>currencyPicker</name>
-            <extensionName>c:currencyPicker</extensionName>
-            <fieldType>ComponentInstance</fieldType>
-            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
-            <isRequired>false</isRequired>
-            <storeOutputAutomatically>true</storeOutputAutomatically>
+            <name>amountFreqDisplayText</name>
+            <fieldText>&lt;h2&gt;Choose an amount&lt;/h2&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
             <styleProperties>
                 <verticalAlignment>
                     <stringValue>top</stringValue>
@@ -86,9 +83,12 @@
             </styleProperties>
         </fields>
         <fields>
-            <name>amountFreqDisplayText</name>
-            <fieldText>&lt;h2&gt;Choose an amount&lt;/h2&gt;</fieldText>
-            <fieldType>DisplayText</fieldType>
+            <name>currencyPicker</name>
+            <extensionName>c:currencyPicker</extensionName>
+            <fieldType>ComponentInstance</fieldType>
+            <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
+            <isRequired>false</isRequired>
+            <storeOutputAutomatically>true</storeOutputAutomatically>
             <styleProperties>
                 <verticalAlignment>
                     <stringValue>top</stringValue>
