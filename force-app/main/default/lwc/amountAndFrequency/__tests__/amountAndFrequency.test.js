@@ -139,7 +139,7 @@ describe('amount formatting before a currency is set', () => {
         const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
         element.presetAmountsOneTime = '25,50,100';
         // A misconfigured Flow variable — a label, not an ISO 4217 code.
-        element.currencyCode = 'Some currency';
+        element.defaultCurrency = 'Some currency';
         document.body.appendChild(element);
 
         // Invalid code normalizes to '' and is not emitted as the selected currency.
@@ -173,7 +173,7 @@ describe('amount is emitted as an exact string, not a float round-trip', () => {
 
     it('preserves high-precision digits that Number() would corrupt', async () => {
         const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
-        element.currencyCode = 'EUR';
+        element.defaultCurrency = 'EUR';
         document.body.appendChild(element);
         await Promise.resolve();
 
@@ -189,7 +189,7 @@ describe('amount is emitted as an exact string, not a float round-trip', () => {
 
     it('emits the exact typed decimal amount', async () => {
         const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
-        element.currencyCode = 'EUR';
+        element.defaultCurrency = 'EUR';
         document.body.appendChild(element);
         await Promise.resolve();
 
@@ -216,7 +216,7 @@ describe('restored amounts are trimmed to the currency decimals', () => {
         try { sessionStorage.setItem('af-state', state); } catch { /* ignore */ }
 
         const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
-        element.currencyCode = 'EUR'; // 2 decimals
+        element.defaultCurrency = 'EUR'; // 2 decimals
         document.body.appendChild(element);
         await Promise.resolve();
 
@@ -234,7 +234,7 @@ describe('aria-describedby references the error node only while it exists', () =
 
     it('omits the error id when there is no error and includes it once an error shows', async () => {
         const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
-        element.currencyCode = 'EUR';
+        element.defaultCurrency = 'EUR';
         element.minAmount = 5;
         document.body.appendChild(element);
         await Promise.resolve();

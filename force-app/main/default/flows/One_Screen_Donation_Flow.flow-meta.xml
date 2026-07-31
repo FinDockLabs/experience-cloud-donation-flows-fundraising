@@ -103,7 +103,7 @@
             <extensionName>c:amountAndFrequency</extensionName>
             <fieldType>ComponentInstance</fieldType>
             <inputParameters>
-                <name>currencyCode</name>
+                <name>defaultCurrency</name>
                 <value>
                     <elementReference>currencyPicker.value</elementReference>
                 </value>

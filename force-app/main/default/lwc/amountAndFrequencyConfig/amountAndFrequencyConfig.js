@@ -195,7 +195,7 @@ export default class AmountAndFrequencyConfig extends LightningElement {
         this._minAmount        = get('minAmount')        ?? 0;
         this._maxAmount        = get('maxAmount')        ?? 0;
 
-        const currencyVar = vars.find(x => x.name === 'currencyCode');
+        const currencyVar = vars.find(x => x.name === 'defaultCurrency');
         if (currencyVar != null) {
             this._currencyValue     = currencyVar.value ?? '';
             this._currencyValueType = currencyVar.valueDataType ?? 'String';
@@ -302,6 +302,6 @@ export default class AmountAndFrequencyConfig extends LightningElement {
 
         this._currencyValue     = val;
         this._currencyValueType = type;
-        this._emit('currencyCode', val, type);
+        this._emit('defaultCurrency', val, type);
     }
 }

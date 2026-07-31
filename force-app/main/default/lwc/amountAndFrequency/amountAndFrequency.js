@@ -48,10 +48,10 @@ export default class AmountAndFrequency extends LightningElement {
     @api defaultFrequency = '';
 
     @api
-    get currencyCode() {
+    get defaultCurrency() {
         return this._currencyCode;
     }
-    set currencyCode(value) {
+    set defaultCurrency(value) {
         // Validate as ISO 4217: a misconfigured Flow variable (e.g. a label instead of a code) must
         // not reach the UI, or the raw text would render as the currency symbol and in preset labels.
         // An invalid value normalizes to '' — the form then shows plain, symbol-less amounts.
@@ -181,7 +181,7 @@ export default class AmountAndFrequency extends LightningElement {
 
     // Localized currency name for assistive text, e.g. "Euro" (en) / "euro" (fr).
     get _currencyName() {
-        return localizedCurrencyName(this.currencyCode, this._locale);
+        return localizedCurrencyName(this._currencyCode, this._locale);
     }
 
     // e.g. "Amount in Euro" — read out when the amount input gains focus, since the visual currency symbol is decorative
@@ -207,14 +207,14 @@ export default class AmountAndFrequency extends LightningElement {
         const presets = this._resolveActivePresets() || [];
         return presets.map(amount => ({
             value:      amount,
-            label:      this._formatPresetAmount(amount, this.currencyCode, this._locale),
+            label:      this._formatPresetAmount(amount, this._currencyCode, this._locale),
             inputId:    `${this._instanceId}-preset-${amount}`,
             isSelected: this._selectedPreset === amount && this._customAmount === ''
         }));
     }
 
     get _symbolInfo() {
-        return currencySymbolInfo(this.currencyCode, this._locale);
+        return currencySymbolInfo(this._currencyCode, this._locale);
     }
 
     get currencySymbol() {
@@ -239,7 +239,7 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     get _currencyDecimals() {
-        return currencyDecimals(this.currencyCode, this._locale);
+        return currencyDecimals(this._currencyCode, this._locale);
     }
 
     get _decimalSeparator() {
@@ -415,12 +415,12 @@ export default class AmountAndFrequency extends LightningElement {
         if (isNaN(num) || num < min) {
             this._validationError = this.labels.ec_label_amount_min_error.replace(
                 '{0}',
-                this._formatPresetAmount(min, this.currencyCode, this._locale)
+                this._formatPresetAmount(min, this._currencyCode, this._locale)
             );
         } else if (max !== null && num > max) {
             this._validationError = this.labels.ec_label_amount_max_error.replace(
                 '{0}',
-                this._formatPresetAmount(max, this.currencyCode, this._locale)
+                this._formatPresetAmount(max, this._currencyCode, this._locale)
             );
         } else {
             this._validationError = '';
@@ -433,7 +433,7 @@ export default class AmountAndFrequency extends LightningElement {
             amountOneTime:    this.amountOneTime,
             amountRecurring:  this.amountRecurring,
             isAmountSelected: this.isAmountSelected,
-            currency:         this.currencyCode
+            currency:         this._currencyCode
         };
         this.dispatchEvent(new CustomEvent('amountfrequencychange', { detail }));
         this.dispatchEvent(new FlowAttributeChangeEvent('frequency',        detail.frequency));
