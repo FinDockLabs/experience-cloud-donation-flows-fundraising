@@ -1,7 +1,19 @@
 import { LightningElement, api } from 'lwc';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
-import { currencyLocale, localizedCurrencyName, currencyDecimals, currencySymbolInfo, sanitizeAmountInput } from 'c/currencyUtils';
+import { currencyLocale,
+    localizedCurrencyName,
+    currencyDecimals,
+    currencySymbolInfo,
+    normalizeCurrency,
+    decimalSeparator,
+    toPlainNumberString,
+    sanitizeLocaleAmountInput,
+    formatPlainToLocale
+} from 'c/currencyUtils';
 import { labels } from './amountAndFrequencyLabels';
+
+// Re-export the pure amount helpers so consumers (and tests) can import them from the component.
+export { toPlainNumberString, sanitizeLocaleAmountInput } from 'c/currencyUtils';
 
 const DEFAULT_AMOUNTS_ONE_TIME  = '25,50,100,250,500,1000';
 const DEFAULT_AMOUNTS_RECURRING = '5,10,25,60,125,250';
@@ -18,6 +30,9 @@ export default class AmountAndFrequency extends LightningElement {
     _customAmount = '';
     _validationError         = '';
     _currencyCode            = '';
+    // True while the amount field is focused: display drops grouping separators for stable editing;
+    // at rest they are shown. Reactive because customAmountDisplay reads it.
+    _isEditing               = false;
 
     labels = labels;
 
@@ -37,7 +52,10 @@ export default class AmountAndFrequency extends LightningElement {
         return this._currencyCode;
     }
     set currencyCode(value) {
-      const next = (value || '').toUpperCase();
+        // Validate as ISO 4217: a misconfigured Flow variable (e.g. a label instead of a code) must
+        // not reach the UI, or the raw text would render as the currency symbol and in preset labels.
+        // An invalid value normalizes to '' — the form then shows plain, symbol-less amounts.
+        const next = normalizeCurrency(value, true);
         if (this._currencyCode === next) return;
         this._currencyCode = next;
         // Clear custom amount if it has more decimal places than the new currency allows.
@@ -73,18 +91,26 @@ export default class AmountAndFrequency extends LightningElement {
         return this._selectedPreset;
     }
 
+    // Exact string form of the active amount for the emitted Flow output. A custom amount is passed
+    // through verbatim (never via Number) so trailing zeros and digits beyond Number.MAX_SAFE_INTEGER
+    // survive; a preset — always a safe integer — is stringified.
+    get _amountString() {
+        if (this._customAmount !== '') {
+            return this._customAmount;
+        }
+        return this._selectedPreset !== null ? String(this._selectedPreset) : null;
+    }
+
     @api
     get amountOneTime() {
         if (this._frequency !== 'oneTime') return null;
-        const amt = this._amount;
-        return amt !== null ? String(amt) : null;
+        return this._amountString;
     }
 
     @api
     get amountRecurring() {
         if (this._frequency !== 'recurring') return null;
-        const amt = this._amount;
-        return amt !== null ? String(amt) : null;
+        return this._amountString;
     }
 
     @api
@@ -216,6 +242,18 @@ export default class AmountAndFrequency extends LightningElement {
         return currencyDecimals(this.currencyCode, this._locale);
     }
 
+    get _decimalSeparator() {
+        return decimalSeparator(this._locale);
+    }
+
+    // Locale-formatted view of the amount bound to the input. At rest it carries grouping separators
+    // (e.g. de-DE "1.234.567,89"); while editing they are dropped ("1234567,89") so keystrokes and
+    // the caret aren't disrupted. Reactive: re-renders when _customAmount, _isEditing, or the
+    // currency (hence locale/precision) changes — the field re-groups without waiting for a focus.
+    get customAmountDisplay() {
+        return formatPlainToLocale(this._customAmount, this._locale, !this._isEditing);
+    }
+
     get validationError() {
         return this._validationError;
     }
@@ -294,26 +332,48 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     handleCustomAmountInput(event) {
-        const val = sanitizeAmountInput(event.target.value, this._currencyDecimals);
-        event.target.value = val;
-        this._customAmount   = val;
-        this._selectedPreset = val !== '' ? null : this._selectedPreset;
-        this._validateAmount(Number(val));
+        // Filter the raw locale input (strip grouping/junk, trim the fraction) and write the cleaned
+        // locale form straight back so the field never shows characters we rejected.
+        const display = sanitizeLocaleAmountInput(event.target.value, this._decimalSeparator, this._currencyDecimals);
+        event.target.value = display;
+        // Store the plain dot-decimal form — string-based, so huge amounts keep every digit.
+        this._customAmount   = toPlainNumberString(display, this._locale);
+        this._selectedPreset = this._customAmount !== '' ? null : this._selectedPreset;
+        this._validateAmount(Number(this._customAmount));
         this._dispatchChange();
     }
 
     handleCustomAmountFocus(event) {
-        event.target.value = this._customAmount;
+        this._isEditing = true;
+        event.target.value = formatPlainToLocale(this._customAmount, this._locale, false);
     }
 
     handleCustomAmountBlur(event) {
-        if (this._customAmount === '') return;
-        const num = Number(this._customAmount);
-        if (isNaN(num)) return;
-        event.target.value = new Intl.NumberFormat(this._locale, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: this._currencyDecimals
-        }).format(num);
+        // Restore grouping separators at rest, imperatively for the same synchronous-update reason.
+        this._isEditing = false;
+        event.target.value = formatPlainToLocale(this._customAmount, this._locale, true);
+    }
+
+    // Trim a plain dot-decimal amount that arrives outside the input handler — restored from
+    // sessionStorage or an ?amount= query param — to the active currency's precision. A stored
+    // "10.50" survives for a 2-decimal currency but becomes "10" for JPY (and "999.999" -> "999.99"
+    // for EUR). String-based so huge amounts keep every digit. Unlike a runtime currencyCode change
+    // (which clears an over-precise custom amount so the payer re-enters it), this runs at mount for
+    // a value the user never sees mid-edit, so trimming to the current currency is least surprising.
+    _trimToCurrencyDecimals(value) {
+        const str = (value || '').toString();
+        const dotIdx = str.indexOf('.');
+        if (dotIdx === -1) {
+            return str;
+        }
+        const decimals = this._currencyDecimals;
+        if (decimals === 0) {
+            return str.substring(0, dotIdx);
+        }
+        if (str.length - dotIdx - 1 > decimals) {
+            return str.substring(0, dotIdx + decimals + 1);
+        }
+        return str;
     }
 
     _parseAmounts(raw) {
