@@ -70,6 +70,19 @@
         <allowFinish>true</allowFinish>
         <allowPause>true</allowPause>
         <fields>
+            <name>amountFreqDisplayText</name>
+            <fieldText>&lt;h2&gt;Choose an amount&lt;/h2&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+            <styleProperties>
+                <verticalAlignment>
+                    <stringValue>top</stringValue>
+                </verticalAlignment>
+                <width>
+                    <stringValue>12</stringValue>
+                </width>
+            </styleProperties>
+        </fields>
+        <fields>
             <name>currencyPicker</name>
             <extensionName>c:currencyPicker</extensionName>
             <fieldType>ComponentInstance</fieldType>
@@ -86,24 +99,11 @@
             </styleProperties>
         </fields>
         <fields>
-            <name>amountFreqDisplayText</name>
-            <fieldText>&lt;h2&gt;Choose an amount&lt;/h2&gt;</fieldText>
-            <fieldType>DisplayText</fieldType>
-            <styleProperties>
-                <verticalAlignment>
-                    <stringValue>top</stringValue>
-                </verticalAlignment>
-                <width>
-                    <stringValue>12</stringValue>
-                </width>
-            </styleProperties>
-        </fields>
-        <fields>
             <name>amountAndFrequency</name>
             <extensionName>c:amountAndFrequency</extensionName>
             <fieldType>ComponentInstance</fieldType>
             <inputParameters>
-                <name>currencyCode</name>
+                <name>defaultCurrency</name>
                 <value>
                     <elementReference>currencyPicker.value</elementReference>
                 </value>

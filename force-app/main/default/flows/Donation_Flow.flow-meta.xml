@@ -249,7 +249,7 @@
                 </value>
             </inputParameters>
             <inputParameters>
-                <name>currencyCode</name>
+                <name>defaultCurrency</name>
                 <value>
                     <elementReference>currencyPicker.value</elementReference>
                 </value>
