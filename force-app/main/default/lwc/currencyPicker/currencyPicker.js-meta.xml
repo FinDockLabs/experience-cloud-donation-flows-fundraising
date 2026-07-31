@@ -3,6 +3,7 @@
     <apiVersion>67.0</apiVersion>
     <description>Currency selector. Resolves the active payment currency, emits it on load, and collapses to a fixed currency when only one is available. Usable on an Experience Cloud page and as a Flow screen component.</description>
     <isExposed>true</isExposed>
+    <masterLabel>Currency selector</masterLabel>
     <targets>
         <target>lightning__FlowScreen</target>
         <target>lightningCommunity__Page</target>
