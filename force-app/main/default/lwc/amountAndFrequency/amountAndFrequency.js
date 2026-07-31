@@ -4,6 +4,7 @@ import { currencyLocale,
     localizedCurrencyName,
     currencyDecimals,
     currencySymbolInfo,
+    normalizeCurrency,
     decimalSeparator,
     toPlainNumberString,
     sanitizeLocaleAmountInput,
@@ -51,7 +52,10 @@ export default class AmountAndFrequency extends LightningElement {
         return this._currencyCode;
     }
     set currencyCode(value) {
-      const next = (value || '').toUpperCase();
+        // Validate as ISO 4217: a misconfigured Flow variable (e.g. a label instead of a code) must
+        // not reach the UI, or the raw text would render as the currency symbol and in preset labels.
+        // An invalid value normalizes to '' — the form then shows plain, symbol-less amounts.
+        const next = normalizeCurrency(value, true);
         if (this._currencyCode === next) return;
         this._currencyCode = next;
         // Clear custom amount if it has more decimal places than the new currency allows.
