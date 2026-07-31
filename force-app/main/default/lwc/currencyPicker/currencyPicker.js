@@ -64,6 +64,8 @@ export default class CurrencyPicker extends LightningElement {
         this._configuredCurrencies = dedupe(
             (this.allowedCurrencies || '').split(',').map(normalize).filter(Boolean)
         );
+        // Restore the last picked currency before loading the list so _resolveInitial prefers it.
+        this._restoreState();
         this._loadActiveCurrencies();
     }
 
@@ -111,6 +113,27 @@ export default class CurrencyPicker extends LightningElement {
     handleChange(event) {
         this._value = event.detail.value;
         this._selected = event.detail.value;
+        this._saveState();
         this._emit();
+    }
+
+    _storageKey() {
+        try { return `cp-state-${window.location.pathname}`; } catch { return 'cp-state'; }
+    }
+
+    _saveState() {
+        try {
+            sessionStorage.setItem(this._storageKey(), JSON.stringify({ selected: this._selected }));
+        } catch { /* sessionStorage unavailable */ }
+    }
+
+    _restoreState() {
+        try {
+            const raw = sessionStorage.getItem(this._storageKey());
+            if (!raw) return;
+            const s = JSON.parse(raw);
+            const code = normalize(s.selected);
+            if (code) this._selected = code;
+        } catch { /* ignore parse errors */ }
     }
 }

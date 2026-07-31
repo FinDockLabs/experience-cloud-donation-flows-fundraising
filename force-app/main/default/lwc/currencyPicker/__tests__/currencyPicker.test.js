@@ -30,6 +30,7 @@ afterEach(() => {
     while (document.body.firstChild) {
         document.body.removeChild(document.body.firstChild);
     }
+    try { sessionStorage.clear(); } catch { /* unavailable */ }
 });
 
 describe('c-currency-picker', () => {
@@ -185,5 +186,31 @@ describe('c-currency-picker', () => {
         const { element } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
         await flush();
         expect(element.validate()).toEqual({ isValid: true, errorMessage: null });
+    });
+
+    it('restores the picked currency on re-mount instead of resetting to the default', async () => {
+        // Payer picks USD over the EUR default...
+        const first = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
+        await flush();
+        first.element.shadowRoot
+            .querySelector('lightning-combobox')
+            .dispatchEvent(new CustomEvent('change', { detail: { value: 'USD' } }));
+        expect(first.element.value).toBe('USD');
+
+        // ...navigates back, so Flow tears the component down and re-creates it.
+        document.body.removeChild(first.element);
+        const second = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
+        await flush();
+
+        expect(second.element.value).toBe('USD'); // restored, not reset to EUR
+    });
+
+    it('ignores a stored currency that is no longer selectable', async () => {
+        try {
+            sessionStorage.setItem(`cp-state-${window.location.pathname}`, JSON.stringify({ selected: 'JPY' }));
+        } catch { /* unavailable */ }
+        const { element } = mount({ allowedCurrencies: 'EUR,USD', defaultCurrency: 'EUR' });
+        await flush();
+        expect(element.value).toBe('EUR'); // stored JPY not in the allow-list → falls back to default
     });
 });
