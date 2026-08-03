@@ -23,6 +23,6 @@ Configurable amounts and frequencies
 3. Go to the donation Flow -> Payment Screen -> Payment Method Selection component
    - configure at least some payment methods
 4. Configure the [payment intent](https://docs.findock.com/docs/july-26/payments/pay-button) (add at least a success and failure URLs and verify the mapping matches your use case).
-6. Activate your flow.
-7. Go to the Experience Cloud Administration -> Preferences -> enable "Allow guest users to access public APIs".
-8. Add the flow to your Experience Cloud site.
+5. Activate your flow.
+6. Go to the Experience Cloud Administration -> Preferences -> enable "Allow guest users to access public APIs".
+7. Add the flow to your Experience Cloud site.
