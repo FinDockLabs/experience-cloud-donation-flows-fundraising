@@ -117,13 +117,13 @@ describe('c-currency-picker', () => {
     });
 
     it('does not treat an invalid non-empty allow-list as no restriction', async () => {
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
         const { element } = mount({ allowedCurrencies: 'euro,$' });
         await flush();
         expect(element.value).toBe('');
         expect(element.validate().isValid).toBe(false);
-        expect(consoleError).toHaveBeenCalledTimes(2);
-        consoleError.mockRestore();
+        expect(consoleWarn).toHaveBeenCalledTimes(2);
+        consoleWarn.mockRestore();
     });
 
     describe('default currency', () => {

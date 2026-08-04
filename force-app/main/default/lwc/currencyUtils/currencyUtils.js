@@ -22,7 +22,7 @@ export function normalizeCurrency(code, logInvalid = false) {
     if (!ISO_CODE.test(upper)) {
         if (logInvalid) {
             // eslint-disable-next-line no-console
-            console.error(`currencyUtils: "${code}" is not a valid ISO 4217 currency code, ignoring it.`);
+            console.warn(`Ignoring invalid ISO 4217 currency code: "${code}"`);
         }
         return '';
     }
