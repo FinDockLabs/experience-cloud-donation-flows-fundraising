@@ -19,7 +19,7 @@ Configurable amounts and frequencies
 
 ## Installation
 1. Press the buttons to deploy the repo to the org.
-2. Assign the **FinDockLabs Donation Flow Guest Access** permission set to your Experience Cloud site guest user. It grants access to the `Donation_Flow`, `One_Screen_Donation_Flow` and `Contact_Assignment` flows and the `CurrencyPickerController` Apex class.
+2. Assign the **FinDockLabs Donation Flow Guest Access** permission set to your Experience Cloud site guest user.
 3. Go to the donation Flow -> Payment Screen -> Payment Method Selection component
    - configure at least some payment methods
 4. Configure the [payment intent](https://docs.findock.com/docs/july-26/payments/pay-button) (add at least a success and failure URLs and verify the mapping matches your use case).
