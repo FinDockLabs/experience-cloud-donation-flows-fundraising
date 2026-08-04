@@ -230,6 +230,15 @@ describe('c-currency-picker-cpe', () => {
             expect(element.validate()).toEqual([]);
         });
 
+        it('rehydrates a saved Flow variable back into the Flow-variable source, whatever the type casing', () => {
+            const element = mount([
+                { name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' },
+                { name: 'defaultCurrency', value: 'CHF_currency', valueDataType: 'reference' }
+            ]);
+            expect(element.shadowRoot.querySelector('lightning-combobox').value).toBe('USE_FLOW_VARIABLE');
+            expect(element.shadowRoot.querySelector('cpm-flow-variable-input')).not.toBeNull();
+        });
+
         it('errors when a literal String default is not a valid ISO code', () => {
             const element = mount([
                 { name: 'allowedCurrencies', value: 'EUR,USD', valueDataType: 'String' },

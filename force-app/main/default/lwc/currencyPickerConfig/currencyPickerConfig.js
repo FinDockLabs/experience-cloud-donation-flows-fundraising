@@ -266,8 +266,8 @@ export default class CurrencyPickerConfig extends LightningElement {
         this._defaultCurrencyValueType = currentVariable?.valueDataType ?? 'String';
 
         const value = this._defaultCurrencyValue;
-        const valueType = this._defaultCurrencyValueType;
-        const isFlowVariable = valueType === 'Reference' || valueType === 'Formula';
+        const valueType = (this._defaultCurrencyValueType || '').toLowerCase();
+        const isFlowVariable = valueType === 'reference' || valueType === 'formula';
 
         if (isFlowVariable && value) {
             this.comboboxValue = FLOW_VAR_OPTION;
