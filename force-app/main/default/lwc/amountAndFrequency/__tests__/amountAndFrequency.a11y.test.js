@@ -17,6 +17,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
         while (document.body.firstChild) {
             document.body.removeChild(document.body.firstChild);
         }
+        sessionStorage.clear();
     });
 
     // ── 1. Base state ───────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
     // The custom-amount <input type="number"> must have a programmatically
     // associated <label> (via for/id pair) and no duplicate IDs on the page.
     it('passes axe scan with only the custom-amount input visible', async () => {
-        const element = createComponent({ defaultCurrency: 'USD' });
+        const element = createComponent({ currencyCode: 'USD' });
         await Promise.resolve();
         await expect(element).toBeAccessible();
     });
@@ -35,7 +36,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
     // matches their id, and the group must have a <legend>.
     it('passes axe scan when the frequency toggle is shown', async () => {
         const element = createComponent({
-            defaultCurrency: 'USD',
+            currencyCode: 'USD',
             showFrequencyToggle: true,
         });
         await Promise.resolve();
@@ -48,7 +49,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
     // sit inside a <fieldset> with a <legend>; no duplicate IDs may exist.
     it('passes axe scan when preset amount buttons are rendered', async () => {
         const element = createComponent({
-            defaultCurrency: 'USD',
+            currencyCode: 'USD',
             presetAmountsOneTime: '25,50,100',
         });
         await Promise.resolve();
@@ -60,7 +61,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
     // both legends are still present (1.3.1) when the full UI is visible.
     it('passes axe scan with frequency toggle and preset amounts together', async () => {
         const element = createComponent({
-            defaultCurrency: 'USD',
+            currencyCode: 'USD',
             showFrequencyToggle: true,
             presetAmountsOneTime: '25,50,100,250',
             presetAmountsRecurring: '5,10,25,60',
@@ -77,7 +78,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
     //   • role="alert" on the error paragraph so SR users are notified (4.1.3)
     it('passes axe scan when a validation error is displayed', async () => {
         const element = createComponent({
-            defaultCurrency: 'USD',
+            currencyCode: 'USD',
             minAmount: 10,
         });
         await Promise.resolve();
@@ -95,6 +96,18 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
         await expect(element).toBeAccessible();
     });
 
+    it('passes axe scan with required and external Flow errors displayed together', async () => {
+        const element = createComponent({ currencyCode: 'USD' });
+        await Promise.resolve();
+
+        element.setCustomValidity('<strong>Flow validation failed</strong>');
+        element.reportValidity();
+        await Promise.resolve();
+
+        expect(element.shadowRoot.querySelectorAll('[role="alert"]')).toHaveLength(2);
+        await expect(element).toBeAccessible();
+    });
+
     // ── 6. ARIA decorative icon ─────────────────────────────────────────────────
     // Covers: 1.1.1 Non-text Content
     // The lightning-icon inside the monthly label carries aria-hidden="true",
@@ -102,7 +115,7 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
     // alternative text.
     it('passes axe scan: monthly icon is hidden from assistive technology', async () => {
         const element = createComponent({
-            defaultCurrency: 'USD',
+            currencyCode: 'USD',
             showFrequencyToggle: true,
         });
         await Promise.resolve();
@@ -119,8 +132,8 @@ describe('c-amount-and-frequency WCAG 2.2 AA accessibility', () => {
     // Two instances on the same page must not produce duplicate id values,
     // which axe flags as a critical violation.
     it('passes axe scan with two component instances on the same page', async () => {
-        createComponent({ defaultCurrency: 'USD', showFrequencyToggle: true });
-        createComponent({ defaultCurrency: 'EUR', showFrequencyToggle: true });
+        createComponent({ currencyCode: 'USD', showFrequencyToggle: true });
+        createComponent({ currencyCode: 'EUR', showFrequencyToggle: true });
         await Promise.resolve();
         await expect(document.body).toBeAccessible();
     });

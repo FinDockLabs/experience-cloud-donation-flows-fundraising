@@ -178,6 +178,11 @@
     color: var(--slds-g-color-error-base-50);
 }
 
+/* Form-level errors render only when present, so they always take their spacing. */
+.amount-error--form {
+    margin-block-start: var(--slds-g-spacing-2);
+}
+
 /* ─── Visually hidden but keyboard/screen-reader accessible ─────────────── */
 
 .visually-hidden-input {

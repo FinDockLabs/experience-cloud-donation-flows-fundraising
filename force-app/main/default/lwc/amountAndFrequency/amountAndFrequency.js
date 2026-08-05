@@ -28,8 +28,14 @@ export default class AmountAndFrequency extends LightningElement {
     _selectedPresetOneTime   = null;
     _selectedPresetRecurring = null;
     _customAmount = '';
-    _validationError         = '';
+    _internalErrorToRender   = '';
+    _cachedExternalErrorMessage = '';
+    _externalErrorToRender   = '';
+    _hasUserInteracted       = false;
+    _focusTimer              = null;
     _currencyCode            = '';
+    _minAmount               = 1;
+    _maxAmount               = 0;
     // True while the amount field is focused: display drops grouping separators for stable editing;
     // at rest they are shown. Reactive because customAmountDisplay reads it.
     _isEditing               = false;
@@ -43,9 +49,25 @@ export default class AmountAndFrequency extends LightningElement {
     @api presetAmountsOneTime   = DEFAULT_AMOUNTS_ONE_TIME;
     @api presetAmountsRecurring = DEFAULT_AMOUNTS_RECURRING;
 
-    @api minAmount       = 1;
-    @api maxAmount       = 0;
     @api defaultFrequency = '';
+
+    @api
+    get minAmount() {
+        return this._minAmount;
+    }
+    set minAmount(value) {
+        this._minAmount = value;
+        this._updateRenderedInternalError();
+    }
+
+    @api
+    get maxAmount() {
+        return this._maxAmount;
+    }
+    set maxAmount(value) {
+        this._maxAmount = value;
+        this._updateRenderedInternalError();
+    }
 
     @api
     get currencyCode() {
@@ -68,6 +90,7 @@ export default class AmountAndFrequency extends LightningElement {
                 this._customAmount = '';
             }
         }
+        this._updateRenderedInternalError();
         // Re-emit so the selectedCurrency flow output tracks a currency that changes at runtime
         // (e.g. bound to the currencyPicker). connectedCallback also emits the initial value.
         this._dispatchChange();
@@ -78,7 +101,10 @@ export default class AmountAndFrequency extends LightningElement {
         return this._frequency;
     }
     set frequency(value) {
-        if (value) this._frequency = value;
+        if (value) {
+            this._frequency = value;
+            this._updateRenderedInternalError();
+        }
     }
 
     // Numeric view of the active amount — used only for boolean/range checks, never for the emitted
@@ -172,11 +198,21 @@ export default class AmountAndFrequency extends LightningElement {
         return `currency-desc-${this._instanceId}`;
     }
 
+    get amountRequiredErrorId() {
+        return `amount-required-error-${this._instanceId}`;
+    }
+
+    get externalErrorId() {
+        return `amount-external-error-${this._instanceId}`;
+    }
+
     get customAmountDescribedBy() {
-        // Only reference the error node while it actually exists — a dangling IDREF is an a11y defect.
-        return this._validationError
-            ? `${this.currencyDescriptionId} ${this.customAmountErrorId}`
-            : this.currencyDescriptionId;
+        // Only reference error nodes while they exist — a dangling IDREF is an a11y defect.
+        const ids = [this.currencyDescriptionId];
+        if (this.hasValidationError) ids.push(this.customAmountErrorId);
+        if (this.hasRequiredError)   ids.push(this.amountRequiredErrorId);
+        if (this.hasExternalError)   ids.push(this.externalErrorId);
+        return ids.join(' ');
     }
 
     // Localized currency name for assistive text, e.g. "Euro" (en) / "euro" (fr).
@@ -255,43 +291,73 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     get validationError() {
-        return this._validationError;
+        return this.hasValidationError ? this._internalErrorToRender : '';
     }
 
     get hasValidationError() {
-        return !!this._validationError;
+        return !!this._internalErrorToRender && this._customAmount !== '';
+    }
+
+    get requiredError() {
+        return this.hasRequiredError ? this._internalErrorToRender : '';
+    }
+
+    get hasRequiredError() {
+        return !!this._internalErrorToRender && this._customAmount === '';
+    }
+
+    get externalError() {
+        return this._externalErrorToRender;
+    }
+
+    get hasExternalError() {
+        return !!this._externalErrorToRender;
+    }
+
+    // Marks the custom amount field invalid for any currently rendered component error.
+    get isAmountInvalid() {
+        return this.hasValidationError || this.hasRequiredError || this.hasExternalError;
     }
 
     get customAmountRowClass() {
-        return this._validationError
+        return this.isAmountInvalid
             ? 'custom-amount-row custom-amount-row--error'
             : 'custom-amount-row';
     }
 
     @api validate() {
-        // If no cached error but a custom amount exists, re-compute — this handles the case
-        // where the component re-mounted (clearing _validationError) while _customAmount was
-        // restored from sessionStorage.
-        if (!this._validationError && this._customAmount !== '') {
-            this._validateAmount(Number(this._customAmount));
-        }
+        // Flow calls reportValidity() separately to render the error (and move focus), so validate()
+        // only reports internal validity without changing any visible UI state.
+        const errorMessage = this._getInternalErrorMessageIfInvalid();
+        this._saveState();
+        return {
+            isValid: !errorMessage,
+            errorMessage: errorMessage || null
+        };
+    }
 
-        if (this._validationError) {
-            return {
-                isValid: false,
-                /*
-                 * Use a zero-width space (\u200B) to block Salesforce Flow navigation.
-                 * Returning the actual error string causes the Flow runtime to render a static,
-                 * duplicate error message outside our component that fails to clear when the
-                 * user empties the input. The zero-width space satisfies the Flow engine's
-                 * requirement for an errorMessage while letting our custom, reactive inline
-                 * error handle the UI cleanly.
-                 */
-                errorMessage: '\u200B'
-            };
+    @api setCustomValidity(externalErrorMessage) {
+        // Store only; reportValidity() is Flow's request to render. If an external error is already
+        // visible, update it immediately so a reactive clear doesn't leave stale text on screen.
+        const wasRenderingExternalError = !!this._externalErrorToRender;
+        this._cachedExternalErrorMessage = externalErrorMessage || '';
+        if (wasRenderingExternalError) {
+            this._externalErrorToRender = this._cachedExternalErrorMessage;
         }
+    }
 
-        return { isValid: true };
+    @api reportValidity() {
+        // Flow explicitly requests that all current internal and external errors be rendered.
+        this._internalErrorToRender = this._getInternalErrorMessageIfInvalid();
+        this._externalErrorToRender = this._cachedExternalErrorMessage;
+        clearTimeout(this._focusTimer);
+        this._focusTimer = null;
+        if (this._internalErrorToRender) {
+            this._focusTimer = requestAnimationFrame(() => {
+                this.template.querySelector('.custom-amount-input-native')?.focus();
+            });
+        }
+        this._saveState();
     }
 
     connectedCallback() {
@@ -305,33 +371,31 @@ export default class AmountAndFrequency extends LightningElement {
             this._customAmount = this._trimToCurrencyDecimals(this._customAmount);
         }
 
-        // If a state was restored from sessionStorage, immediately evaluate
-        // validation to prevent layout shifts or flashing of error styles.
-        if (this._customAmount !== '') {
-            this._validateAmount(Number(this._customAmount));
-        }
-
         this._dispatchChange();
     }
 
     disconnectedCallback() {
+        clearTimeout(this._focusTimer);
         this._saveState();
     }
 
     handleFrequencyChange(event) {
+        this._hasUserInteracted = true;
         this._frequency = event.target.value;
-        this._validationError = '';
+        this._updateRenderedInternalError();
         this._dispatchChange();
     }
 
     handlePresetAmountSelect(event) {
+        this._hasUserInteracted = true;
         this._selectedPreset = Number(event.target.value);
         this._customAmount    = '';
-        this._validationError = '';
+        this._updateRenderedInternalError();
         this._dispatchChange();
     }
 
     handleCustomAmountInput(event) {
+        this._hasUserInteracted = true;
         // Filter the raw locale input (strip grouping/junk, trim the fraction) and write the cleaned
         // locale form straight back so the field never shows characters we rejected.
         const display = sanitizeLocaleAmountInput(event.target.value, this._decimalSeparator, this._currencyDecimals);
@@ -339,7 +403,7 @@ export default class AmountAndFrequency extends LightningElement {
         // Store the plain dot-decimal form — string-based, so huge amounts keep every digit.
         this._customAmount   = toPlainNumberString(display, this._locale);
         this._selectedPreset = this._customAmount !== '' ? null : this._selectedPreset;
-        this._validateAmount(Number(this._customAmount));
+        this._updateRenderedInternalError();
         this._dispatchChange();
     }
 
@@ -405,25 +469,38 @@ export default class AmountAndFrequency extends LightningElement {
         return this._parseAmounts(raw);
     }
 
-    _validateAmount(num) {
+    _getRangeErrorMessageIfInvalid() {
         if (this._customAmount === '') {
-            this._validationError = '';
-            return;
+            return '';
         }
+        const num = Number(this._customAmount);
         const min = this.customAmountMin;
         const max = this.customAmountMax;
         if (isNaN(num) || num < min) {
-            this._validationError = this.labels.ec_label_amount_min_error.replace(
+            return this.labels.ec_label_amount_min_error.replace(
                 '{0}',
                 this._formatPresetAmount(min, this.currencyCode, this._locale)
             );
-        } else if (max !== null && num > max) {
-            this._validationError = this.labels.ec_label_amount_max_error.replace(
+        }
+        if (max !== null && num > max) {
+            return this.labels.ec_label_amount_max_error.replace(
                 '{0}',
                 this._formatPresetAmount(max, this.currencyCode, this._locale)
             );
-        } else {
-            this._validationError = '';
+        }
+        return '';
+    }
+
+    _getInternalErrorMessageIfInvalid() {
+        return this._getRangeErrorMessageIfInvalid()
+            || (!this.isAmountSelected ? this.labels.ec_label_amount_required : '');
+    }
+
+    _updateRenderedInternalError() {
+        // Once an internal error is visible, keep it reactive even if the change came from Flow
+        // rather than direct user input. Before interaction/reportValidity(), keep the first load clean.
+        if (this._hasUserInteracted || this._internalErrorToRender) {
+            this._internalErrorToRender = this._getInternalErrorMessageIfInvalid();
         }
     }
 

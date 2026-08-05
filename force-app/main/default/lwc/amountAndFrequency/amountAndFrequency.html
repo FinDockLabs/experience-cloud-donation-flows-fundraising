@@ -81,7 +81,7 @@
                     placeholder={labels.ec_label_other_amount}
                     value={customAmountDisplay}
                     aria-describedby={customAmountDescribedBy}
-                    aria-invalid={hasValidationError}
+                    aria-invalid={isAmountInvalid}
                     oninput={handleCustomAmountInput}
                     onfocus={handleCustomAmountFocus}
                     onblur={handleCustomAmountBlur}
@@ -101,6 +101,20 @@
                 </p>
             </template>
         </div>
+
+        <!-- Announced on remount by focusing the amount field (aria-describedby), not this region. -->
+        <template lwc:if={hasRequiredError}>
+            <p id={amountRequiredErrorId} role="alert" class="amount-error amount-error--form">
+                {requiredError}
+            </p>
+        </template>
+
+        <!-- Rich text: Flow errors from setCustomValidity() may contain markup. -->
+        <template lwc:if={hasExternalError}>
+            <div id={externalErrorId} role="alert" class="amount-error amount-error--form amount-error--external">
+                <lightning-formatted-rich-text value={externalError}></lightning-formatted-rich-text>
+            </div>
+        </template>
 
     </div>
 </template>
