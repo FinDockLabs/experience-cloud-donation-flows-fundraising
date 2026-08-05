@@ -301,11 +301,13 @@ export default class AmountAndFrequency extends LightningElement {
             this._validateAmount(Number(this._customAmount));
         }
 
+        // No amount at all: block navigation (a range error, if any, is reported first above so the
+        // two messages never show together). Persist now \u2014 the runtime remounts right after and its
+        // disconnectedCallback can fire too late; focus is handled on the remounted instance.
         if (!this._validationError && !this.isAmountSelected) {
             this._requiredError = this.labels.ec_label_amount_required;
             this._saveState();
-            // Zero-width space: see the range-error branch below.
-            return {isValid: false, errorMessage: '\u200B'};
+            return {isValid: false, errorMessage: '\u200B'}; // zero-width space: see the branch below
         }
         this._requiredError = '';
 
@@ -334,12 +336,20 @@ export default class AmountAndFrequency extends LightningElement {
         this._restoreState();
         this._applyQueryParams();
 
+        // The required error should survive the Flow remount after a blocked validate(), but not a
+        // manual page reload. Drop it on the first mount of a reloaded document; later remounts in the
+        // same load still restore it (see _consumeReloadOnce).
+        if (this._restoredRequiredError && this._consumeReloadOnce()) {
+            this._restoredRequiredError = false;
+            this._requiredError = '';
+            this._saveState();
+        }
+
         if (this._customAmount !== '') {
             this._customAmount = this._trimToCurrencyDecimals(this._customAmount);
         }
 
-        // If a state was restored from sessionStorage, immediately evaluate
-        // validation to prevent layout shifts or flashing of error styles.
+        // Re-validate a restored amount up front to avoid a flash of error styles on first paint.
         if (this._customAmount !== '') {
             this._validateAmount(Number(this._customAmount));
         }
@@ -348,14 +358,16 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     renderedCallback() {
-        // Re-raise the required error after a Flow remount (connectedCallback cleared it), unless an
-        // amount has been selected since, and queue focus so it is announced.
+        // Re-raise the required error after a Flow remount cleared it, unless an amount was selected
+        // since, and queue focus so a screen reader announces it.
         if (this._restoredRequiredError && !this.isAmountSelected) {
             this._requiredError = this.labels.ec_label_amount_required;
             this._focusRequiredError = true;
         }
         this._restoredRequiredError = false;
 
+        // Focus the amount field, not the message: the reader gets its label, the error via
+        // aria-describedby and aria-invalid. Deferred so the runtime can't steal focus back.
         if (this._focusRequiredError && this._requiredError) {
             this._focusRequiredError = false;
             this._focusTimer = setTimeout(() => {
@@ -499,6 +511,21 @@ export default class AmountAndFrequency extends LightningElement {
 
     _storageKey() {
         try { return `af-state-${window.location.pathname}`; } catch { return 'af-state'; }
+    }
+
+    // True on the first mount of a reloaded document, false for the Flow runtime's in-page remounts.
+    // The window marker (reset by the next real reload) tells the two apart; falls back to false when
+    // the Navigation Timing API is missing.
+    _consumeReloadOnce() {
+        try {
+            if (window.__afReloadHandled) return false;
+            const [nav] = performance.getEntriesByType('navigation');
+            const isReload = nav ? nav.type === 'reload' : false;
+            if (isReload) window.__afReloadHandled = true;
+            return isReload;
+        } catch {
+            return false;
+        }
     }
 
     _saveState() {

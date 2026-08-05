@@ -440,6 +440,51 @@ describe('validate() requires an amount before Flow can advance', () => {
         expect(requiredErrorVisible(second)).toBe(false);
     });
 
+    it('hides the error on a manual reload but restores it on the remount after the next validate()', async () => {
+        // Persist a required-error state (as a blocked validate() would).
+        const first = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        first.currencyCode = 'EUR';
+        document.body.appendChild(first);
+        await Promise.resolve();
+        first.validate();
+        await Promise.resolve();
+        expect(requiredErrorVisible(first)).toBe(true);
+        document.body.removeChild(first);
+
+        // Simulate the next document load being a reload (F5), not the in-page Flow remount.
+        // jsdom has no Navigation Timing entries, so define the method for the duration of the test.
+        const original = performance.getEntriesByType;
+        performance.getEntriesByType = () => [{ type: 'reload' }];
+        delete window.__afReloadHandled; // fresh window as a real reload would produce
+        try {
+            // First mount of the reloaded document: no validation happened, so no error.
+            const second = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+            second.currencyCode = 'EUR';
+            document.body.appendChild(second);
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(requiredErrorVisible(second)).toBe(false);
+
+            // User presses Next again -> validate() blocks and persists the error, runtime remounts.
+            second.validate();
+            await Promise.resolve();
+            document.body.removeChild(second);
+
+            const third = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+            third.currencyCode = 'EUR';
+            document.body.appendChild(third);
+            await Promise.resolve();
+            await Promise.resolve();
+
+            // Same document load is still "reload", but the once-per-load guard has fired, so the
+            // error is restored on this remount instead of being cleared again.
+            expect(requiredErrorVisible(third)).toBe(true);
+        } finally {
+            performance.getEntriesByType = original;
+            delete window.__afReloadHandled;
+        }
+    });
+
     it('keeps the selected frequency across the remount that follows a blocked validate()', async () => {
         const first = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
         first.currencyCode = 'EUR';
