@@ -185,7 +185,6 @@
 
 /* ─── Visually hidden but keyboard/screen-reader accessible ─────────────── */
 
-.assistive-text,
 .visually-hidden-input {
     position: absolute;
     width: 1px;

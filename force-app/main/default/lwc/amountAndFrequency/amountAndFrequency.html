@@ -4,7 +4,7 @@
         <!-- Frequency Toggle -->
         <template lwc:if={showFrequencyToggle}>
             <fieldset class="frequency-toggle">
-                <legend class="assistive-text">{labels.ec_label_donation_frequency}</legend>
+                <legend class="slds-assistive-text">{labels.ec_label_donation_frequency}</legend>
 
                 <input
                     type="radio"
@@ -41,7 +41,7 @@
         <!-- Preset Amount Buttons -->
         <template lwc:if={showPresets}>
             <fieldset class="amount-grid">
-                <legend class="assistive-text">{labels.ec_label_preset_amount_group}</legend>
+                <legend class="slds-assistive-text">{labels.ec_label_preset_amount_group}</legend>
                 <template for:each={presetAmountOptions} for:item="option">
                     <span key={option.value} class="amount-cell">
                         <input
@@ -62,8 +62,8 @@
 
         <!-- Custom Amount Input Row -->
         <div class="custom-amount-field">
-            <label for={customAmountId} class="assistive-text">{labels.ec_label_other_amount}</label>
-            <span id={currencyDescriptionId} class="assistive-text">{currencyAssistiveText}</span>
+            <label for={customAmountId} class="slds-assistive-text">{labels.ec_label_other_amount}</label>
+            <span id={currencyDescriptionId} class="slds-assistive-text">{currencyAssistiveText}</span>
             <div class={customAmountRowClass}>
 
                 <template lwc:if={isCurrencyPrefix}>
