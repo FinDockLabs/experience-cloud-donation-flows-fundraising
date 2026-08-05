@@ -291,7 +291,8 @@ describe('Salesforce Flow validation contract', () => {
     }
 
     function requiredErrorVisible(element) {
-        return requiredErrorEl(element).textContent.trim() !== '';
+        const el = requiredErrorEl(element);
+        return !!el && el.textContent.trim() !== '';
     }
 
     function rangeErrorEl(element) {
@@ -352,7 +353,7 @@ describe('Salesforce Flow validation contract', () => {
                 .toContain(requiredErrorEl(element).id);
 
             // The same error may already be visible when the user presses Next again. Focus must
-            // still move even though assigning the same message doesn't trigger renderedCallback.
+            // still move — reportValidity() re-focuses regardless of whether the text changed.
             const preset = element.shadowRoot.querySelector('input[name^="preset-"]');
             preset.focus();
             element.validate();

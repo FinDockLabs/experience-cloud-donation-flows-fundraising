@@ -102,25 +102,16 @@
             </template>
         </div>
 
-        <!-- Keep the empty live region mounted so assistive technology announces its text update
-             reliably when Flow calls reportValidity(). Focus fallback also exposes it through the
-             amount input's aria-describedby relationship. -->
-        <p
-            id={amountRequiredErrorId}
-            role="alert"
-            aria-live="assertive"
-            aria-atomic="true"
-            class={requiredErrorClass}
-        >
-            {requiredError}
-        </p>
+        <!-- Announced on remount by focusing the amount field (aria-describedby), not this region. -->
+        <template lwc:if={hasRequiredError}>
+            <p id={amountRequiredErrorId} role="alert" class="amount-error amount-error--form">
+                {requiredError}
+            </p>
+        </template>
 
+        <!-- Rich text: Flow errors from setCustomValidity() may contain markup. -->
         <template lwc:if={hasExternalError}>
-            <div
-                id={externalErrorId}
-                role="alert"
-                class="amount-error amount-error--form amount-error--external"
-            >
+            <div id={externalErrorId} role="alert" class="amount-error amount-error--form amount-error--external">
                 <lightning-formatted-rich-text value={externalError}></lightning-formatted-rich-text>
             </div>
         </template>

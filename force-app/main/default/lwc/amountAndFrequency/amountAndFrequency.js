@@ -32,7 +32,6 @@ export default class AmountAndFrequency extends LightningElement {
     _cachedExternalErrorMessage = '';
     _externalErrorToRender   = '';
     _hasUserInteracted       = false;
-    _focusAmountAfterReport  = false;
     _focusTimer              = null;
     _currencyCode            = '';
     _minAmount               = 1;
@@ -326,12 +325,6 @@ export default class AmountAndFrequency extends LightningElement {
             : 'custom-amount-row';
     }
 
-    get requiredErrorClass() {
-        return this.hasRequiredError
-            ? 'amount-error amount-error--form is-visible'
-            : 'amount-error amount-error--form';
-    }
-
     @api validate() {
         // Flow calls reportValidity() separately to render the error (and move focus), so validate()
         // only reports internal validity without changing any visible UI state.
@@ -357,12 +350,11 @@ export default class AmountAndFrequency extends LightningElement {
         // Flow explicitly requests that all current internal and external errors be rendered.
         this._internalErrorToRender = this._getInternalErrorMessageIfInvalid();
         this._externalErrorToRender = this._cachedExternalErrorMessage;
-        // Flow calls this to render the error, so move focus to the amount field: on the instance
-        // mounted after a remount the error is present at first paint and its live region stays
-        // silent, so focus (which exposes the error via aria-describedby) is what announces it.
         if (this._internalErrorToRender) {
-            this._focusAmountAfterReport = true;
-            this._scheduleAmountFocus();
+            clearTimeout(this._focusTimer);
+            this._focusTimer = setTimeout(() => {
+                this.template.querySelector('.custom-amount-input-native')?.focus();
+            }, 0);
         }
         this._saveState();
     }
@@ -381,28 +373,9 @@ export default class AmountAndFrequency extends LightningElement {
         this._dispatchChange();
     }
 
-    renderedCallback() {
-        // On the instance the Flow runtime mounts after a remount, the restored error is already
-        // present at first paint, so its live region stays silent — move focus to the amount field
-        // instead so a screen reader reads the label and the error via aria-describedby.
-        this._scheduleAmountFocus();
-    }
-
     disconnectedCallback() {
         clearTimeout(this._focusTimer);
         this._saveState();
-    }
-
-    // Focus the amount field once an error is rendered, so assistive tech announces it. Deferred past
-    // this tick so the Flow runtime settling the screen can't steal focus back. No-op unless a focus
-    // was armed (validate()) and an internal error is actually showing.
-    _scheduleAmountFocus() {
-        if (!this._focusAmountAfterReport || !this._internalErrorToRender) return;
-        this._focusAmountAfterReport = false;
-        clearTimeout(this._focusTimer);
-        this._focusTimer = setTimeout(() => {
-            this.template.querySelector('.custom-amount-input-native')?.focus();
-        }, 0);
     }
 
     handleFrequencyChange(event) {
