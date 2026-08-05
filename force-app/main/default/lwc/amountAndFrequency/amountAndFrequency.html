@@ -4,7 +4,7 @@
         <!-- Frequency Toggle -->
         <template lwc:if={showFrequencyToggle}>
             <fieldset class="frequency-toggle">
-                <legend class="slds-assistive-text">{labels.ec_label_donation_frequency}</legend>
+                <legend class="assistive-text">{labels.ec_label_donation_frequency}</legend>
 
                 <input
                     type="radio"
@@ -41,7 +41,7 @@
         <!-- Preset Amount Buttons -->
         <template lwc:if={showPresets}>
             <fieldset class="amount-grid">
-                <legend class="slds-assistive-text">{labels.ec_label_preset_amount_group}</legend>
+                <legend class="assistive-text">{labels.ec_label_preset_amount_group}</legend>
                 <template for:each={presetAmountOptions} for:item="option">
                     <span key={option.value} class="amount-cell">
                         <input
@@ -62,8 +62,8 @@
 
         <!-- Custom Amount Input Row -->
         <div class="custom-amount-field">
-            <label for={customAmountId} class="slds-assistive-text">{labels.ec_label_other_amount}</label>
-            <span id={currencyDescriptionId} class="slds-assistive-text">{currencyAssistiveText}</span>
+            <label for={customAmountId} class="assistive-text">{labels.ec_label_other_amount}</label>
+            <span id={currencyDescriptionId} class="assistive-text">{currencyAssistiveText}</span>
             <div class={customAmountRowClass}>
 
                 <template lwc:if={isCurrencyPrefix}>
@@ -102,11 +102,28 @@
             </template>
         </div>
 
-        <!-- role="alert" announces the error when the screen is not remounted; after a remount the
-             error is read via the amount field, which renderedCallback focuses -->
-        <p id={amountRequiredErrorId} role="alert" class={requiredErrorClass}>
+        <!-- Keep the empty live region mounted so assistive technology announces its text update
+             reliably when Flow calls reportValidity(). Focus fallback also exposes it through the
+             amount input's aria-describedby relationship. -->
+        <p
+            id={amountRequiredErrorId}
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+            class={requiredErrorClass}
+        >
             {requiredError}
         </p>
+
+        <template lwc:if={hasExternalError}>
+            <div
+                id={externalErrorId}
+                role="alert"
+                class="amount-error amount-error--form amount-error--external"
+            >
+                <lightning-formatted-rich-text value={externalError}></lightning-formatted-rich-text>
+            </div>
+        </template>
 
     </div>
 </template>

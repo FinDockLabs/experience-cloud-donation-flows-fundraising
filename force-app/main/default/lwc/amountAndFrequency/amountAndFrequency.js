@@ -28,13 +28,15 @@ export default class AmountAndFrequency extends LightningElement {
     _selectedPresetOneTime   = null;
     _selectedPresetRecurring = null;
     _customAmount = '';
-    _validationError         = '';
-    // "Amount required" error, shown below the whole selection area rather than on the custom field.
-    _requiredError           = '';
-    _restoredRequiredError   = false;
-    _focusRequiredError      = false;
+    _internalErrorToRender   = '';
+    _cachedExternalErrorMessage = '';
+    _externalErrorToRender   = '';
+    _hasUserInteracted       = false;
+    _focusAmountAfterReport  = false;
     _focusTimer              = null;
     _currencyCode            = '';
+    _minAmount               = 1;
+    _maxAmount               = 0;
     // True while the amount field is focused: display drops grouping separators for stable editing;
     // at rest they are shown. Reactive because customAmountDisplay reads it.
     _isEditing               = false;
@@ -48,9 +50,25 @@ export default class AmountAndFrequency extends LightningElement {
     @api presetAmountsOneTime   = DEFAULT_AMOUNTS_ONE_TIME;
     @api presetAmountsRecurring = DEFAULT_AMOUNTS_RECURRING;
 
-    @api minAmount       = 1;
-    @api maxAmount       = 0;
     @api defaultFrequency = '';
+
+    @api
+    get minAmount() {
+        return this._minAmount;
+    }
+    set minAmount(value) {
+        this._minAmount = value;
+        this._updateRenderedInternalError();
+    }
+
+    @api
+    get maxAmount() {
+        return this._maxAmount;
+    }
+    set maxAmount(value) {
+        this._maxAmount = value;
+        this._updateRenderedInternalError();
+    }
 
     @api
     get currencyCode() {
@@ -73,6 +91,7 @@ export default class AmountAndFrequency extends LightningElement {
                 this._customAmount = '';
             }
         }
+        this._updateRenderedInternalError();
         // Re-emit so the selectedCurrency flow output tracks a currency that changes at runtime
         // (e.g. bound to the currencyPicker). connectedCallback also emits the initial value.
         this._dispatchChange();
@@ -83,7 +102,10 @@ export default class AmountAndFrequency extends LightningElement {
         return this._frequency;
     }
     set frequency(value) {
-        if (value) this._frequency = value;
+        if (value) {
+            this._frequency = value;
+            this._updateRenderedInternalError();
+        }
     }
 
     // Numeric view of the active amount — used only for boolean/range checks, never for the emitted
@@ -181,11 +203,16 @@ export default class AmountAndFrequency extends LightningElement {
         return `amount-required-error-${this._instanceId}`;
     }
 
+    get externalErrorId() {
+        return `amount-external-error-${this._instanceId}`;
+    }
+
     get customAmountDescribedBy() {
         // Only reference error nodes while they exist — a dangling IDREF is an a11y defect.
         const ids = [this.currencyDescriptionId];
-        if (this._validationError) ids.push(this.customAmountErrorId);
-        if (this._requiredError)   ids.push(this.amountRequiredErrorId);
+        if (this.hasValidationError) ids.push(this.customAmountErrorId);
+        if (this.hasRequiredError)   ids.push(this.amountRequiredErrorId);
+        if (this.hasExternalError)   ids.push(this.externalErrorId);
         return ids.join(' ');
     }
 
@@ -265,68 +292,79 @@ export default class AmountAndFrequency extends LightningElement {
     }
 
     get validationError() {
-        return this._validationError;
+        return this.hasValidationError ? this._internalErrorToRender : '';
     }
 
     get hasValidationError() {
-        return !!this._validationError;
+        return !!this._internalErrorToRender && this._customAmount !== '';
     }
 
     get requiredError() {
-        return this._requiredError;
+        return this.hasRequiredError ? this._internalErrorToRender : '';
     }
 
-    // Marks the custom amount field invalid for either the range or the required error.
+    get hasRequiredError() {
+        return !!this._internalErrorToRender && this._customAmount === '';
+    }
+
+    get externalError() {
+        return this._externalErrorToRender;
+    }
+
+    get hasExternalError() {
+        return !!this._externalErrorToRender;
+    }
+
+    // Marks the custom amount field invalid for any currently rendered component error.
     get isAmountInvalid() {
-        return !!this._validationError || !!this._requiredError;
+        return this.hasValidationError || this.hasRequiredError || this.hasExternalError;
     }
 
     get customAmountRowClass() {
-        return this._validationError
+        return this.isAmountInvalid
             ? 'custom-amount-row custom-amount-row--error'
             : 'custom-amount-row';
     }
 
     get requiredErrorClass() {
-        return this._requiredError
+        return this.hasRequiredError
             ? 'amount-error amount-error--form is-visible'
             : 'amount-error amount-error--form';
     }
 
     @api validate() {
-        // If no cached error but a custom amount exists, re-compute — this handles the case
-        // where the component re-mounted (clearing _validationError) while _customAmount was
-        // restored from sessionStorage.
-        if (!this._validationError && this._customAmount !== '') {
-            this._validateAmount(Number(this._customAmount));
-        }
+        // Flow calls reportValidity() separately to render the error (and move focus), so validate()
+        // only reports internal validity without changing any visible UI state.
+        const errorMessage = this._getInternalErrorMessageIfInvalid();
+        this._saveState();
+        return {
+            isValid: !errorMessage,
+            errorMessage: errorMessage || null
+        };
+    }
 
-        // No amount at all: block navigation (a range error, if any, is reported first above so the
-        // two messages never show together). Persist now \u2014 the runtime remounts right after and its
-        // disconnectedCallback can fire too late; focus is handled on the remounted instance.
-        if (!this._validationError && !this.isAmountSelected) {
-            this._requiredError = this.labels.ec_label_amount_required;
-            this._saveState();
-            return {isValid: false, errorMessage: '\u200B'}; // zero-width space: see the branch below
+    @api setCustomValidity(externalErrorMessage) {
+        // Store only; reportValidity() is Flow's request to render. If an external error is already
+        // visible, update it immediately so a reactive clear doesn't leave stale text on screen.
+        const wasRenderingExternalError = !!this._externalErrorToRender;
+        this._cachedExternalErrorMessage = externalErrorMessage || '';
+        if (wasRenderingExternalError) {
+            this._externalErrorToRender = this._cachedExternalErrorMessage;
         }
-        this._requiredError = '';
+    }
 
-        if (this._validationError) {
-            return {
-                isValid: false,
-                /*
-                 * Use a zero-width space (\u200B) to block Salesforce Flow navigation.
-                 * Returning the actual error string causes the Flow runtime to render a static,
-                 * duplicate error message outside our component that fails to clear when the
-                 * user empties the input. The zero-width space satisfies the Flow engine's
-                 * requirement for an errorMessage while letting our custom, reactive inline
-                 * error handle the UI cleanly.
-                 */
-                errorMessage: '\u200B'
-            };
+    @api reportValidity() {
+        // Flow explicitly requests that all current internal and external errors be rendered.
+        this._internalErrorToRender = this._getInternalErrorMessageIfInvalid();
+        this._externalErrorToRender = this._cachedExternalErrorMessage;
+        // Flow calls this to render the error, so move focus to the amount field: on the instance
+        // mounted after a remount the error is present at first paint and its live region stays
+        // silent, so focus (which exposes the error via aria-describedby) is what announces it.
+        if (this._internalErrorToRender) {
+            this._focusAmountAfterReport = true;
+            this._scheduleAmountFocus();
         }
-
-        return { isValid: true };
+        this._saveState();
     }
 
     connectedCallback() {
@@ -336,44 +374,18 @@ export default class AmountAndFrequency extends LightningElement {
         this._restoreState();
         this._applyQueryParams();
 
-        // The required error should survive the Flow remount after a blocked validate(), but not a
-        // manual page reload. Drop it on the first mount of a reloaded document; later remounts in the
-        // same load still restore it (see _consumeReloadOnce).
-        if (this._restoredRequiredError && this._consumeReloadOnce()) {
-            this._restoredRequiredError = false;
-            this._requiredError = '';
-            this._saveState();
-        }
-
         if (this._customAmount !== '') {
             this._customAmount = this._trimToCurrencyDecimals(this._customAmount);
-        }
-
-        // Re-validate a restored amount up front to avoid a flash of error styles on first paint.
-        if (this._customAmount !== '') {
-            this._validateAmount(Number(this._customAmount));
         }
 
         this._dispatchChange();
     }
 
     renderedCallback() {
-        // Re-raise the required error after a Flow remount cleared it, unless an amount was selected
-        // since, and queue focus so a screen reader announces it.
-        if (this._restoredRequiredError && !this.isAmountSelected) {
-            this._requiredError = this.labels.ec_label_amount_required;
-            this._focusRequiredError = true;
-        }
-        this._restoredRequiredError = false;
-
-        // Focus the amount field, not the message: the reader gets its label, the error via
-        // aria-describedby and aria-invalid. Deferred so the runtime can't steal focus back.
-        if (this._focusRequiredError && this._requiredError) {
-            this._focusRequiredError = false;
-            this._focusTimer = setTimeout(() => {
-                this.template.querySelector('.custom-amount-input-native')?.focus();
-            }, 0);
-        }
+        // On the instance the Flow runtime mounts after a remount, the restored error is already
+        // present at first paint, so its live region stays silent — move focus to the amount field
+        // instead so a screen reader reads the label and the error via aria-describedby.
+        this._scheduleAmountFocus();
     }
 
     disconnectedCallback() {
@@ -381,22 +393,35 @@ export default class AmountAndFrequency extends LightningElement {
         this._saveState();
     }
 
+    // Focus the amount field once an error is rendered, so assistive tech announces it. Deferred past
+    // this tick so the Flow runtime settling the screen can't steal focus back. No-op unless a focus
+    // was armed (validate()) and an internal error is actually showing.
+    _scheduleAmountFocus() {
+        if (!this._focusAmountAfterReport || !this._internalErrorToRender) return;
+        this._focusAmountAfterReport = false;
+        clearTimeout(this._focusTimer);
+        this._focusTimer = setTimeout(() => {
+            this.template.querySelector('.custom-amount-input-native')?.focus();
+        }, 0);
+    }
+
     handleFrequencyChange(event) {
+        this._hasUserInteracted = true;
         this._frequency = event.target.value;
-        this._validationError = '';
-        this._requiredError = '';
+        this._updateRenderedInternalError();
         this._dispatchChange();
     }
 
     handlePresetAmountSelect(event) {
+        this._hasUserInteracted = true;
         this._selectedPreset = Number(event.target.value);
         this._customAmount    = '';
-        this._validationError = '';
-        this._requiredError = '';
+        this._updateRenderedInternalError();
         this._dispatchChange();
     }
 
     handleCustomAmountInput(event) {
+        this._hasUserInteracted = true;
         // Filter the raw locale input (strip grouping/junk, trim the fraction) and write the cleaned
         // locale form straight back so the field never shows characters we rejected.
         const display = sanitizeLocaleAmountInput(event.target.value, this._decimalSeparator, this._currencyDecimals);
@@ -404,8 +429,7 @@ export default class AmountAndFrequency extends LightningElement {
         // Store the plain dot-decimal form — string-based, so huge amounts keep every digit.
         this._customAmount   = toPlainNumberString(display, this._locale);
         this._selectedPreset = this._customAmount !== '' ? null : this._selectedPreset;
-        this._requiredError  = '';
-        this._validateAmount(Number(this._customAmount));
+        this._updateRenderedInternalError();
         this._dispatchChange();
     }
 
@@ -471,25 +495,38 @@ export default class AmountAndFrequency extends LightningElement {
         return this._parseAmounts(raw);
     }
 
-    _validateAmount(num) {
+    _getRangeErrorMessageIfInvalid() {
         if (this._customAmount === '') {
-            this._validationError = '';
-            return;
+            return '';
         }
+        const num = Number(this._customAmount);
         const min = this.customAmountMin;
         const max = this.customAmountMax;
         if (isNaN(num) || num < min) {
-            this._validationError = this.labels.ec_label_amount_min_error.replace(
+            return this.labels.ec_label_amount_min_error.replace(
                 '{0}',
                 this._formatPresetAmount(min, this.currencyCode, this._locale)
             );
-        } else if (max !== null && num > max) {
-            this._validationError = this.labels.ec_label_amount_max_error.replace(
+        }
+        if (max !== null && num > max) {
+            return this.labels.ec_label_amount_max_error.replace(
                 '{0}',
                 this._formatPresetAmount(max, this.currencyCode, this._locale)
             );
-        } else {
-            this._validationError = '';
+        }
+        return '';
+    }
+
+    _getInternalErrorMessageIfInvalid() {
+        return this._getRangeErrorMessageIfInvalid()
+            || (!this.isAmountSelected ? this.labels.ec_label_amount_required : '');
+    }
+
+    _updateRenderedInternalError() {
+        // Once an internal error is visible, keep it reactive even if the change came from Flow
+        // rather than direct user input. Before interaction/reportValidity(), keep the first load clean.
+        if (this._hasUserInteracted || this._internalErrorToRender) {
+            this._internalErrorToRender = this._getInternalErrorMessageIfInvalid();
         }
     }
 
@@ -513,28 +550,12 @@ export default class AmountAndFrequency extends LightningElement {
         try { return `af-state-${window.location.pathname}`; } catch { return 'af-state'; }
     }
 
-    // True on the first mount of a reloaded document, false for the Flow runtime's in-page remounts.
-    // The window marker (reset by the next real reload) tells the two apart; falls back to false when
-    // the Navigation Timing API is missing.
-    _consumeReloadOnce() {
-        try {
-            if (window.__afReloadHandled) return false;
-            const [nav] = performance.getEntriesByType('navigation');
-            const isReload = nav ? nav.type === 'reload' : false;
-            if (isReload) window.__afReloadHandled = true;
-            return isReload;
-        } catch {
-            return false;
-        }
-    }
-
     _saveState() {
         try {
             sessionStorage.setItem(this._storageKey(), JSON.stringify({
                 frequency:      this._frequency,
                 selectedPreset: this._selectedPreset,
-                customAmount:   this._customAmount,
-                requiredError:  !!this._requiredError
+                customAmount:   this._customAmount
             }));
         } catch { /* sessionStorage unavailable */ }
     }
@@ -547,7 +568,6 @@ export default class AmountAndFrequency extends LightningElement {
             if (s.frequency)                    this._frequency      = s.frequency;
             if (s.selectedPreset !== undefined) this._selectedPreset = s.selectedPreset;
             if (s.customAmount   !== undefined) this._customAmount   = s.customAmount;
-            this._restoredRequiredError = !!s.requiredError;
         } catch { /* ignore parse errors */ }
     }
 
