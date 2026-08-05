@@ -350,8 +350,9 @@ export default class AmountAndFrequency extends LightningElement {
         // Flow explicitly requests that all current internal and external errors be rendered.
         this._internalErrorToRender = this._getInternalErrorMessageIfInvalid();
         this._externalErrorToRender = this._cachedExternalErrorMessage;
+        clearTimeout(this._focusTimer);
+        this._focusTimer = null;
         if (this._internalErrorToRender) {
-            clearTimeout(this._focusTimer);
             this._focusTimer = setTimeout(() => {
                 this.template.querySelector('.custom-amount-input-native')?.focus();
             }, 0);
