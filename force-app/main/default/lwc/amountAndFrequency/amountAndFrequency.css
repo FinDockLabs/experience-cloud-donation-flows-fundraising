@@ -52,6 +52,7 @@
     align-items: center;
     justify-content: center;
     gap: var(--slds-g-spacing-2);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
 /* Monthly Icon (heart) */
@@ -88,12 +89,13 @@
     color: var(--dxp-s-form-element-text-color, var(--dxp-g-root-contrast-color, var(--slds-g-color-neutral-base-10)));
     letter-spacing: var(--dxp-s-form-element-text-letter-spacing, normal);
     cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
 /* subtle hover tint, works on any theme, distinct from selected state */
 .visually-hidden-input:not(:checked) + .toggle-option:hover,
 .visually-hidden-input:not(:checked) + .amount-option:hover {
-    background-color: var(--dxp-s-form-element-color-background-hover, var(--slds-g-color-neutral-base-95));
+    background-color: color-mix(in srgb, var(--dxp-g-brand, var(--slds-g-color-brand-base-60)) 8%, transparent);
 }
 
 /* ─── Custom Amount Row ──────────────────────────────────────────────────── */
@@ -113,6 +115,7 @@
     border-radius: var(--dxp-s-form-element-radius-border, var(--slds-g-radius-border-2));
     background-color: var(--dxp-s-form-element-color-background, var(--dxp-g-root-background-color, var(--slds-g-color-neutral-base-100)));
     overflow: hidden;
+    transition: border-color 0.2s ease;
 }
 
 .custom-amount-row:focus-within {
@@ -200,20 +203,20 @@
 .visually-hidden-input:checked + .toggle-option {
     background-color: var(--dxp-s-form-element-color-background, var(--dxp-g-root-background-color, var(--slds-g-color-neutral-base-100)));
     color: var(--dxp-s-form-element-text-color, var(--dxp-g-root-contrast-color, var(--slds-g-color-neutral-base-10)));
-    box-shadow: inset 0 0 0 var(--slds-g-sizing-border-2) var(--dxp-g-brand, var(--slds-g-color-brand-base-60));
+    box-shadow: inset 0 0 0 2px var(--dxp-g-brand, var(--slds-g-color-brand-base-60));
 }
 
 /* Selected state (preset amount) */
 .visually-hidden-input:checked + .amount-option {
     background-color: var(--dxp-s-form-element-color-background-active, var(--dxp-s-form-element-color-background, var(--slds-g-color-neutral-base-100)));
-    box-shadow: inset 0 0 0 var(--slds-g-sizing-border-2) var(--dxp-g-brand, var(--slds-g-color-brand-base-60));
+    box-shadow: inset 0 0 0 2px var(--dxp-g-brand, var(--slds-g-color-brand-base-60));
 }
 
 /* Visible keyboard focus (WCAG 2.4.7 AA) drawn on the label */
 .visually-hidden-input:focus-visible + .toggle-option,
 .visually-hidden-input:focus-visible + .amount-option {
-    outline: var(--slds-g-sizing-border-2) solid var(--dxp-g-brand, var(--slds-g-color-brand-base-60));
-    outline-offset: var(--slds-g-sizing-border-2);
+    outline: 2px solid var(--dxp-g-brand, var(--slds-g-color-brand-base-60));
+    outline-offset: 2px;
 }
 
 /* Selected + focused: drop the inset ring so only the focus outline shows */

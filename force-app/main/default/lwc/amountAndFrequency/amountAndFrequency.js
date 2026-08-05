@@ -353,9 +353,9 @@ export default class AmountAndFrequency extends LightningElement {
         clearTimeout(this._focusTimer);
         this._focusTimer = null;
         if (this._internalErrorToRender) {
-            this._focusTimer = setTimeout(() => {
+            this._focusTimer = requestAnimationFrame(() => {
                 this.template.querySelector('.custom-amount-input-native')?.focus();
-            }, 0);
+            });
         }
         this._saveState();
     }
