@@ -29,6 +29,11 @@ export default class AmountAndFrequency extends LightningElement {
     _selectedPresetRecurring = null;
     _customAmount = '';
     _validationError         = '';
+    // "Amount required" error, shown below the whole selection area rather than on the custom field.
+    _requiredError           = '';
+    _restoredRequiredError   = false;
+    _focusRequiredError      = false;
+    _focusTimer              = null;
     _currencyCode            = '';
     // True while the amount field is focused: display drops grouping separators for stable editing;
     // at rest they are shown. Reactive because customAmountDisplay reads it.
@@ -172,11 +177,16 @@ export default class AmountAndFrequency extends LightningElement {
         return `currency-desc-${this._instanceId}`;
     }
 
+    get amountRequiredErrorId() {
+        return `amount-required-error-${this._instanceId}`;
+    }
+
     get customAmountDescribedBy() {
-        // Only reference the error node while it actually exists — a dangling IDREF is an a11y defect.
-        return this._validationError
-            ? `${this.currencyDescriptionId} ${this.customAmountErrorId}`
-            : this.currencyDescriptionId;
+        // Only reference error nodes while they exist — a dangling IDREF is an a11y defect.
+        const ids = [this.currencyDescriptionId];
+        if (this._validationError) ids.push(this.customAmountErrorId);
+        if (this._requiredError)   ids.push(this.amountRequiredErrorId);
+        return ids.join(' ');
     }
 
     // Localized currency name for assistive text, e.g. "Euro" (en) / "euro" (fr).
@@ -262,10 +272,25 @@ export default class AmountAndFrequency extends LightningElement {
         return !!this._validationError;
     }
 
+    get requiredError() {
+        return this._requiredError;
+    }
+
+    // Marks the custom amount field invalid for either the range or the required error.
+    get isAmountInvalid() {
+        return !!this._validationError || !!this._requiredError;
+    }
+
     get customAmountRowClass() {
         return this._validationError
             ? 'custom-amount-row custom-amount-row--error'
             : 'custom-amount-row';
+    }
+
+    get requiredErrorClass() {
+        return this._requiredError
+            ? 'amount-error amount-error--form is-visible'
+            : 'amount-error amount-error--form';
     }
 
     @api validate() {
@@ -275,6 +300,14 @@ export default class AmountAndFrequency extends LightningElement {
         if (!this._validationError && this._customAmount !== '') {
             this._validateAmount(Number(this._customAmount));
         }
+
+        if (!this._validationError && !this.isAmountSelected) {
+            this._requiredError = this.labels.ec_label_amount_required;
+            this._saveState();
+            // Zero-width space: see the range-error branch below.
+            return {isValid: false, errorMessage: '\u200B'};
+        }
+        this._requiredError = '';
 
         if (this._validationError) {
             return {
@@ -314,13 +347,32 @@ export default class AmountAndFrequency extends LightningElement {
         this._dispatchChange();
     }
 
+    renderedCallback() {
+        // Re-raise the required error after a Flow remount (connectedCallback cleared it), unless an
+        // amount has been selected since, and queue focus so it is announced.
+        if (this._restoredRequiredError && !this.isAmountSelected) {
+            this._requiredError = this.labels.ec_label_amount_required;
+            this._focusRequiredError = true;
+        }
+        this._restoredRequiredError = false;
+
+        if (this._focusRequiredError && this._requiredError) {
+            this._focusRequiredError = false;
+            this._focusTimer = setTimeout(() => {
+                this.template.querySelector('.custom-amount-input-native')?.focus();
+            }, 0);
+        }
+    }
+
     disconnectedCallback() {
+        clearTimeout(this._focusTimer);
         this._saveState();
     }
 
     handleFrequencyChange(event) {
         this._frequency = event.target.value;
         this._validationError = '';
+        this._requiredError = '';
         this._dispatchChange();
     }
 
@@ -328,6 +380,7 @@ export default class AmountAndFrequency extends LightningElement {
         this._selectedPreset = Number(event.target.value);
         this._customAmount    = '';
         this._validationError = '';
+        this._requiredError = '';
         this._dispatchChange();
     }
 
@@ -339,6 +392,7 @@ export default class AmountAndFrequency extends LightningElement {
         // Store the plain dot-decimal form — string-based, so huge amounts keep every digit.
         this._customAmount   = toPlainNumberString(display, this._locale);
         this._selectedPreset = this._customAmount !== '' ? null : this._selectedPreset;
+        this._requiredError  = '';
         this._validateAmount(Number(this._customAmount));
         this._dispatchChange();
     }
@@ -452,7 +506,8 @@ export default class AmountAndFrequency extends LightningElement {
             sessionStorage.setItem(this._storageKey(), JSON.stringify({
                 frequency:      this._frequency,
                 selectedPreset: this._selectedPreset,
-                customAmount:   this._customAmount
+                customAmount:   this._customAmount,
+                requiredError:  !!this._requiredError
             }));
         } catch { /* sessionStorage unavailable */ }
     }
@@ -465,6 +520,7 @@ export default class AmountAndFrequency extends LightningElement {
             if (s.frequency)                    this._frequency      = s.frequency;
             if (s.selectedPreset !== undefined) this._selectedPreset = s.selectedPreset;
             if (s.customAmount   !== undefined) this._customAmount   = s.customAmount;
+            this._restoredRequiredError = !!s.requiredError;
         } catch { /* ignore parse errors */ }
     }
 

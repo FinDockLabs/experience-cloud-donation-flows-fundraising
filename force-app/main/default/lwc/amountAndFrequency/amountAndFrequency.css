@@ -178,6 +178,16 @@
     color: var(--slds-g-color-error-base-50);
 }
 
+/* The form-level alert region stays in the DOM (empty) so its text change is announced after a
+   remount; it only takes visual space once it carries an error. */
+.amount-error--form {
+    margin-block-start: 0;
+}
+
+.amount-error--form.is-visible {
+    margin-block-start: var(--slds-g-spacing-2);
+}
+
 /* ─── Visually hidden but keyboard/screen-reader accessible ─────────────── */
 
 .visually-hidden-input {

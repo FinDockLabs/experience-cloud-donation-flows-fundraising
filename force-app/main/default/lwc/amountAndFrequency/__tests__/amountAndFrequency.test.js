@@ -244,14 +244,14 @@ describe('aria-describedby references the error node only while it exists', () =
 
         // No error: describedby must not point at a non-existent error node.
         let describedBy = input.getAttribute('aria-describedby');
-        expect(element.shadowRoot.querySelector('.amount-error')).toBeNull();
+        expect(element.shadowRoot.querySelector('.amount-error:not(.amount-error--form)')).toBeNull();
         expect(describedBy).not.toMatch(/custom-amount-error/);
 
         // Trigger a validation error (below min).
         enterCustomAmount(element, '1');
         await Promise.resolve();
 
-        const errorEl = element.shadowRoot.querySelector('.amount-error');
+        const errorEl = element.shadowRoot.querySelector('.amount-error:not(.amount-error--form)');
         expect(errorEl).not.toBeNull();
         describedBy = input.getAttribute('aria-describedby');
         // Every IDREF in describedby must resolve to a real element.
@@ -259,5 +259,216 @@ describe('aria-describedby references the error node only while it exists', () =
             expect(element.shadowRoot.querySelector(`[id="${id}"]`)).not.toBeNull();
         });
         expect(describedBy).toContain(errorEl.id);
+    });
+});
+
+describe('validate() requires an amount before Flow can advance', () => {
+    beforeEach(() => {
+        // disconnectedCallback persists the last amount to sessionStorage keyed by pathname;
+        // clear it so a prior test's amount can't restore into these "nothing selected" cases.
+        sessionStorage.clear();
+    });
+
+    afterEach(() => {
+        while (document.body.firstChild) {
+            document.body.removeChild(document.body.firstChild);
+        }
+        try { sessionStorage.clear(); } catch { /* unavailable */ }
+    });
+
+    function selectPreset(element, value) {
+        const input = element.shadowRoot.querySelector(`input[name^="preset-"][value="${value}"]`);
+        input.checked = true;
+        input.dispatchEvent(new CustomEvent('change', { bubbles: true, composed: true }));
+        return input;
+    }
+
+    // The alert region is always in the DOM (so its text change is announced); it carries the
+    // is-visible class and non-empty text only while an amount-required error is active.
+    function requiredErrorEl(element) {
+        return element.shadowRoot.querySelector('.amount-error--form');
+    }
+    function requiredErrorVisible(element) {
+        const el = requiredErrorEl(element);
+        return !!el && el.classList.contains('is-visible') && el.textContent.trim() !== '';
+    }
+
+    it('blocks navigation and shows a form-level error when nothing is selected', async () => {
+        const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        element.currencyCode = 'EUR';
+        document.body.appendChild(element);
+        await Promise.resolve();
+
+        const result = element.validate();
+
+        // Zero-width space keeps our inline error the single source of truth in the UI.
+        expect(result.isValid).toBe(false);
+        expect(result.errorMessage).toBe('\u200B');
+
+        await Promise.resolve();
+        const errorEl = requiredErrorEl(element);
+        expect(requiredErrorVisible(element)).toBe(true);
+        expect(errorEl.getAttribute('role')).toBe('alert');
+
+        // The amount field is marked invalid and points at the error for assistive tech.
+        const input = element.shadowRoot.querySelector('.custom-amount-input-native');
+        expect(input.getAttribute('aria-invalid')).toBe('true');
+        expect(input.getAttribute('aria-describedby').split(/\s+/)).toContain(errorEl.id);
+    });
+
+    it('passes once a preset amount is selected', async () => {
+        const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        element.currencyCode = 'EUR';
+        document.body.appendChild(element);
+        await Promise.resolve();
+
+        selectPreset(element, '50');
+        await Promise.resolve();
+
+        expect(element.validate()).toEqual({ isValid: true });
+        await Promise.resolve();
+        expect(requiredErrorVisible(element)).toBe(false);
+    });
+
+    it('shows only the range error (not "required") when a below-minimum amount like 0 is entered', async () => {
+        const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        element.currencyCode = 'EUR';
+        element.minAmount = 1;
+        document.body.appendChild(element);
+        await Promise.resolve();
+
+        enterCustomAmount(element, '0'); // 0 is not "no amount" — it is a non-empty, invalid amount
+        await Promise.resolve();
+
+        expect(element.validate().isValid).toBe(false);
+        await Promise.resolve();
+
+        // Range error is shown; the redundant "required" message is not.
+        const rangeError = element.shadowRoot.querySelector('.amount-error:not(.amount-error--form)');
+        expect(rangeError).not.toBeNull();
+        expect(requiredErrorVisible(element)).toBe(false);
+    });
+
+    it('passes once a custom amount is entered', async () => {
+        const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        element.currencyCode = 'EUR';
+        element.minAmount = 1;
+        document.body.appendChild(element);
+        await Promise.resolve();
+
+        enterCustomAmount(element, '10');
+        await Promise.resolve();
+
+        expect(element.validate().isValid).toBe(true);
+    });
+
+    it('clears the required error once the user selects an amount', async () => {
+        const element = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        element.currencyCode = 'EUR';
+        document.body.appendChild(element);
+        await Promise.resolve();
+
+        element.validate();
+        await Promise.resolve();
+        expect(requiredErrorVisible(element)).toBe(true);
+
+        selectPreset(element, '50');
+        await Promise.resolve();
+        expect(requiredErrorVisible(element)).toBe(false);
+    });
+
+    it('re-shows the error and focuses the amount field after the Flow runtime remounts', async () => {
+        jest.useFakeTimers();
+        try {
+            // The runtime remounts the screen after validate() blocks navigation, so the error must be
+            // rehydrated from persisted state and the amount field refocused — otherwise the user sees
+            // a refresh with no announced error until they tab to the field.
+            const first = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+            first.currencyCode = 'EUR';
+            document.body.appendChild(first);
+            await Promise.resolve();
+
+            first.validate();
+            await Promise.resolve();
+            expect(requiredErrorVisible(first)).toBe(true);
+
+            // Remove (fires disconnectedCallback -> _saveState) then mount a new instance.
+            document.body.removeChild(first);
+
+            const second = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+            second.currencyCode = 'EUR';
+            document.body.appendChild(second);
+            // Two ticks: the region mounts empty, then renderedCallback sets the text and queues focus.
+            await Promise.resolve();
+            await Promise.resolve();
+
+            // Error survives the remount even though no amount is selected on the new instance.
+            expect(requiredErrorVisible(second)).toBe(true);
+
+            // Focus is deferred (setTimeout) so it survives the runtime settling the screen, and lands
+            // on the amount field (its aria-describedby carries the error) — not the bare text node.
+            jest.runOnlyPendingTimers();
+            const input = second.shadowRoot.querySelector('.custom-amount-input-native');
+            expect(second.shadowRoot.activeElement).toBe(input);
+            expect(input.getAttribute('aria-invalid')).toBe('true');
+            expect(input.getAttribute('aria-describedby').split(/\s+/))
+                .toContain(requiredErrorEl(second).id);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('does not resurrect the required error once an amount was selected before remount', async () => {
+        const first = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        first.currencyCode = 'EUR';
+        document.body.appendChild(first);
+        await Promise.resolve();
+
+        first.validate();
+        await Promise.resolve();
+        selectPreset(first, '50'); // user fixes it before the next remount
+        await Promise.resolve();
+
+        document.body.removeChild(first);
+
+        const second = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        second.currencyCode = 'EUR';
+        document.body.appendChild(second);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(requiredErrorVisible(second)).toBe(false);
+    });
+
+    it('keeps the selected frequency across the remount that follows a blocked validate()', async () => {
+        const first = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        first.currencyCode = 'EUR';
+        first.showFrequencyToggle = true;
+        first.defaultFrequency = 'oneTime';
+        document.body.appendChild(first);
+        await Promise.resolve();
+
+        // Switch to the recurring frequency, then block navigation with no amount.
+        const monthly = first.shadowRoot.querySelector(`input[value="recurring"]`);
+        monthly.checked = true;
+        monthly.dispatchEvent(new CustomEvent('change', { bubbles: true, composed: true }));
+        await Promise.resolve();
+        first.validate();
+        await Promise.resolve();
+
+        document.body.removeChild(first);
+
+        const second = createElement('c-amount-and-frequency', { is: AmountAndFrequency });
+        second.currencyCode = 'EUR';
+        second.showFrequencyToggle = true;
+        second.defaultFrequency = 'oneTime';
+        document.body.appendChild(second);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Remounted instance restores 'recurring', not the 'oneTime' default.
+        expect(second.frequency).toBe('recurring');
+        const monthlyAfter = second.shadowRoot.querySelector(`input[value="recurring"]`);
+        expect(monthlyAfter.checked).toBe(true);
     });
 });

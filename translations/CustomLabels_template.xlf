@@ -30,6 +30,10 @@
             <source>Minimum amount is {0}</source>
             <target></target>
         </trans-unit>
+        <trans-unit id="CustomLabel.ec_label_amount_required" maxwidth="1000" size-unit="char">
+            <source>Please select or enter an amount</source>
+            <target></target>
+        </trans-unit>
         <trans-unit id="CustomLabel.ec_label_give_once" maxwidth="1000" size-unit="char">
             <source>Give once</source>
             <target></target>

@@ -81,7 +81,7 @@
                     placeholder={labels.ec_label_other_amount}
                     value={customAmountDisplay}
                     aria-describedby={customAmountDescribedBy}
-                    aria-invalid={hasValidationError}
+                    aria-invalid={isAmountInvalid}
                     oninput={handleCustomAmountInput}
                     onfocus={handleCustomAmountFocus}
                     onblur={handleCustomAmountBlur}
@@ -101,6 +101,12 @@
                 </p>
             </template>
         </div>
+
+        <!-- role="alert" announces the error when the screen is not remounted; after a remount the
+             error is read via the amount field, which renderedCallback focuses -->
+        <p id={amountRequiredErrorId} role="alert" class={requiredErrorClass}>
+            {requiredError}
+        </p>
 
     </div>
 </template>

@@ -59,6 +59,14 @@
         <value>Minimum amount is {0}</value>
     </labels>
     <labels>
+        <fullName>ec_label_amount_required</fullName>
+        <categories>FinDock Experience Cloud Component</categories>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Amount required validation message</shortDescription>
+        <value>Please select or enter an amount</value>
+    </labels>
+    <labels>
         <fullName>ec_label_give_once</fullName>
         <categories>FinDock Experience Cloud Component</categories>
         <language>en_US</language>
